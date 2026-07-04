@@ -9,11 +9,20 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local TOGGLE_KEY = Enum.KeyCode.F1
 local GAME_FOLDER = "FUCKASS GAMES"
+local CONFIG_FOLDER = "BrainrotHub"
+local CONFIG_FILE = CONFIG_FOLDER .. "/settings.cfg"
+local CONFIG_FALLBACK_FILE = "BrainrotHub_settings.cfg"
 
 local SupportedGameList = {
 	-- Add jobId to try joining a specific public server:
 	-- { placeId = 114640202062357, jobId = "SERVER_JOB_ID_HERE", name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
 	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
+}
+
+local ConsoleOwners = {
+	-- Your account is added by name so owner tools work even if UserId changes in testing.
+	ciagovmainalt03 = true,
+	[10356151318] = true,
 }
 
 local Updates = {
@@ -47,8 +56,10 @@ local colors = {
 }
 
 local accentColor = colors.blue
+local transparencyAmount = 0
 local themedObjects = {}
 local transparentObjects = {}
+local notify
 
 local function trackTheme(object, property)
 	table.insert(themedObjects, { object = object, property = property or "BackgroundColor3" })
@@ -59,6 +70,84 @@ end
 local function trackTransparency(object, baseTransparency)
 	table.insert(transparentObjects, { object = object, base = baseTransparency or object.BackgroundTransparency or 0 })
 	return object
+end
+
+local function ensureFolder(path)
+	if type(makefolder) ~= "function" then
+		return
+	end
+
+	if type(isfolder) == "function" then
+		if not isfolder(path) then
+			pcall(makefolder, path)
+		end
+	else
+		pcall(makefolder, path)
+	end
+end
+
+local function colorToText(color)
+	return tostring(math.floor(color.R * 255 + 0.5)) .. "," .. tostring(math.floor(color.G * 255 + 0.5)) .. "," .. tostring(math.floor(color.B * 255 + 0.5))
+end
+
+local function textToColor(text)
+	local r, g, b = tostring(text):match("(%d+),(%d+),(%d+)")
+	if not r then
+		return nil
+	end
+	return Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+end
+
+local function loadSettings()
+	if type(isfile) ~= "function" or type(readfile) ~= "function" then
+		return {}
+	end
+
+	local path = isfile(CONFIG_FILE) and CONFIG_FILE or (isfile(CONFIG_FALLBACK_FILE) and CONFIG_FALLBACK_FILE or nil)
+	if not path then
+		return {}
+	end
+
+	local ok, data = pcall(readfile, path)
+	if not ok or type(data) ~= "string" then
+		return {}
+	end
+
+	local settings = {}
+	for line in data:gmatch("[^\r\n]+") do
+		local key, value = line:match("^([^=]+)=(.*)$")
+		if key then
+			settings[key] = value
+		end
+	end
+	return settings
+end
+
+local function saveSettings()
+	if type(writefile) ~= "function" then
+		return false
+	end
+
+	ensureFolder(CONFIG_FOLDER)
+	local data = "accent=" .. colorToText(accentColor) .. "\ntransparency=" .. tostring(transparencyAmount)
+	local ok = pcall(writefile, CONFIG_FILE, data)
+	if ok then
+		return true
+	end
+
+	return pcall(writefile, CONFIG_FALLBACK_FILE, data)
+end
+
+local savedSettings = loadSettings()
+if savedSettings.accent then
+	local savedAccent = textToColor(savedSettings.accent)
+	if savedAccent then
+		accentColor = savedAccent
+		colors.blue = savedAccent
+	end
+end
+if savedSettings.transparency then
+	transparencyAmount = tonumber(savedSettings.transparency) or 0
 end
 
 local function corner(parent, radius)
@@ -125,6 +214,19 @@ local function getExperienceName(placeId)
 		return MarketplaceService:GetProductInfo(placeId or game.PlaceId)
 	end)
 	return ok and info and info.Name or "Current Experience"
+end
+
+local function isConsoleOwner()
+	return ConsoleOwners[player.UserId] == true or ConsoleOwners[player.Name] == true or ConsoleOwners[string.lower(player.Name)] == true
+end
+
+local function getListedGame(placeId)
+	for _, entry in ipairs(SupportedGameList) do
+		if tonumber(entry.placeId) == tonumber(placeId) then
+			return entry
+		end
+	end
+	return nil
 end
 
 local function tryLoadGameFile(placeId)
@@ -207,14 +309,23 @@ if oldGui then oldGui:Destroy() end
 local legacyGui = playerGui:FindFirstChild("SimpleGui")
 if legacyGui then legacyGui:Destroy() end
 
+local listedGame = getListedGame(game.PlaceId)
 local gameConfig, loadedPath = SupportedGames[game.PlaceId], "Built-in table"
 if not gameConfig then
 	gameConfig, loadedPath = tryLoadGameFile(game.PlaceId)
+end
+if not gameConfig and listedGame then
+	gameConfig = {
+		name = listedGame.name,
+		actions = listedGame.actions or {},
+	}
+	loadedPath = "SupportedGameList"
 end
 
 local gameSupported = type(gameConfig) == "table"
 local gameName = gameSupported and (gameConfig.name or getExperienceName(game.PlaceId)) or getExperienceName(game.PlaceId)
 local supportedGames = buildSupportedGameList()
+local consoleOwner = isConsoleOwner()
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BrainrotHubGui"
@@ -381,6 +492,9 @@ local function makeTab(name, order)
 
 	button.MouseButton1Click:Connect(function()
 		selectTab(name)
+		if notify then
+			notify("Opened " .. name, "Tab switched.", accentColor)
+		end
 	end)
 
 	tabs[name] = button
@@ -476,6 +590,9 @@ local function makeSupportedGameButton(parent, entry, order)
 	button.MouseButton1Click:Connect(function()
 		if entry.placeId then
 			join.Text = "Joining..."
+			if notify then
+				notify("Joining game", entry.name or ("Place " .. tostring(entry.placeId)), accentColor)
+			end
 			local ok = pcall(function()
 				if entry.jobId then
 					TeleportService:TeleportToPlaceInstance(entry.placeId, entry.jobId, player)
@@ -486,6 +603,9 @@ local function makeSupportedGameButton(parent, entry, order)
 			if not ok then
 				join.Text = "Restricted"
 				join.BackgroundColor3 = colors.red
+				if notify then
+					notify("Teleport failed", "Roblox blocked this place or server.", colors.red)
+				end
 				task.delay(2, function()
 					if join and join.Parent then
 						join.Text = "Join"
@@ -656,7 +776,12 @@ if gameSupported then
 			button.MouseButton1Click:Connect(function()
 				if type(action.callback) == "function" then
 					local ok, err = pcall(action.callback)
-					if not ok then warn("Game action failed:", err) end
+					if ok then
+						if notify then notify("Action ran", action.title or "Game Action", colors.green) end
+					else
+						warn("Game action failed:", err)
+						if notify then notify("Action failed", tostring(err), colors.red) end
+					end
 				end
 			end)
 		end
@@ -676,13 +801,26 @@ local function applyAccent(newColor)
 	if selectedTab and tabs[selectedTab] then
 		tabs[selectedTab].BackgroundColor3 = newColor
 	end
+
+	saveSettings()
+
+	if notify then
+		notify("Color updated", "Accent color changed.", newColor)
+	end
 end
 
 local function applyTransparency(amount)
+	transparencyAmount = amount
 	for _, item in ipairs(transparentObjects) do
 		if item.object and item.object.Parent then
 			item.object.BackgroundTransparency = math.clamp(item.base + amount, 0, 0.82)
 		end
+	end
+
+	saveSettings()
+
+	if notify then
+		notify("Transparency updated", amount > 0 and "Light transparency enabled." or "Solid UI enabled.", colors.cyan)
 	end
 end
 
@@ -725,6 +863,17 @@ settingsTitle.Position = UDim2.new(0, 14, 0, 13)
 local settingsBody = label(settingsIntro, "SettingsBody", "Change the accent color, transparency, and install an autoexec loader when your executor supports file writes.", 12, colors.muted, Enum.Font.GothamMedium)
 settingsBody.Size = UDim2.new(1, -28, 0, 34)
 settingsBody.Position = UDim2.new(0, 14, 0, 41)
+
+local ownerPanel = makePanel(settingsPage, 104)
+local ownerTitle = label(ownerPanel, "OwnerTitle", "Console Owner", 15, consoleOwner and colors.green or colors.red, Enum.Font.GothamBold)
+ownerTitle.Size = UDim2.new(1, -28, 0, 24)
+ownerTitle.Position = UDim2.new(0, 14, 0, 12)
+local ownerBody = label(ownerPanel, "OwnerBody", consoleOwner and "Permissions active. Owner-only controls are unlocked." or "Permissions locked. Add your UserId or username to ConsoleOwners.", 12, colors.muted, Enum.Font.GothamMedium)
+ownerBody.Size = UDim2.new(1, -28, 0, 36)
+ownerBody.Position = UDim2.new(0, 14, 0, 38)
+local ownerId = label(ownerPanel, "OwnerId", "User: @" .. player.Name .. "  |  UserId " .. tostring(player.UserId), 11, colors.muted, Enum.Font.GothamMedium)
+ownerId.Size = UDim2.new(1, -28, 0, 18)
+ownerId.Position = UDim2.new(0, 14, 0, 76)
 
 local colorPanel = makePanel(settingsPage, 118)
 local colorTitle = label(colorPanel, "ColorTitle", "UI Color", 15, colors.text, Enum.Font.GothamBold)
@@ -802,9 +951,17 @@ autoStatus.Size = UDim2.new(1, -28, 0, 22)
 autoStatus.Position = UDim2.new(0, 14, 0, 82)
 
 local installButton = makeSettingButton(autoPanel, "Install Autoexec Loader", function()
+	if not consoleOwner then
+		autoStatus.Text = "Console Owner permission required"
+		autoStatus.TextColor3 = colors.red
+		if notify then notify("Permission denied", "Console Owner is required for auto inject.", colors.red) end
+		return
+	end
+
 	if type(writefile) ~= "function" then
 		autoStatus.Text = "writefile is not supported by this executor"
 		autoStatus.TextColor3 = colors.red
+		if notify then notify("Autoexec unavailable", "This executor does not expose writefile.", colors.red) end
 		return
 	end
 
@@ -812,18 +969,24 @@ local installButton = makeSettingButton(autoPanel, "Install Autoexec Loader", fu
 	local paths = {
 		"autoexec/BrainrotHub.lua",
 		"autoexecute/BrainrotHub.lua",
+		"AutoExec/BrainrotHub.lua",
 		"BrainrotHub.autoexec.lua",
 	}
 
 	local installed = false
 	for _, path in ipairs(paths) do
 		local ok = pcall(function()
+			local folder = path:match("^(.*)/[^/]+$")
+			if folder then
+				ensureFolder(folder)
+			end
 			writefile(path, loader)
 		end)
 		if ok then
 			installed = true
 			autoStatus.Text = "Installed to " .. path
 			autoStatus.TextColor3 = colors.green
+			if notify then notify("Autoexec installed", path, colors.green) end
 			break
 		end
 	end
@@ -831,11 +994,39 @@ local installButton = makeSettingButton(autoPanel, "Install Autoexec Loader", fu
 	if not installed then
 		autoStatus.Text = "Could not write autoexec file"
 		autoStatus.TextColor3 = colors.red
+		if notify then notify("Autoexec failed", "Could not write to known autoexec paths.", colors.red) end
 	end
 end)
 installButton.Size = UDim2.new(1, -28, 0, 42)
 installButton.Position = UDim2.new(0, 14, 0, 104)
 installButton.Parent = autoPanel
+
+local ownerTools = makePanel(settingsPage, 120)
+local ownerToolsTitle = label(ownerTools, "OwnerToolsTitle", "Owner Tools", 15, colors.text, Enum.Font.GothamBold)
+ownerToolsTitle.Size = UDim2.new(1, -28, 0, 24)
+ownerToolsTitle.Position = UDim2.new(0, 14, 0, 12)
+local ownerToolsBody = label(ownerTools, "OwnerToolsBody", consoleOwner and "Copy useful debug info for configs and support checks." or "Locked until Console Owner permission is active.", 12, colors.muted, Enum.Font.GothamMedium)
+ownerToolsBody.Size = UDim2.new(1, -28, 0, 34)
+ownerToolsBody.Position = UDim2.new(0, 14, 0, 38)
+
+local copyDebug = makeSettingButton(ownerTools, "Copy Debug Info", function()
+	if not consoleOwner then
+		if notify then notify("Permission denied", "Console Owner is required.", colors.red) end
+		return
+	end
+
+	local debugText = "PlaceId: " .. tostring(game.PlaceId) .. "\nJobId: " .. tostring(game.JobId) .. "\nGame: " .. tostring(gameName)
+	if type(setclipboard) == "function" then
+		setclipboard(debugText)
+		if notify then notify("Copied debug info", "PlaceId and JobId copied.", colors.green) end
+	else
+		print(debugText)
+		if notify then notify("Printed debug info", "setclipboard is unavailable.", colors.yellow) end
+	end
+end)
+copyDebug.Size = UDim2.new(1, -28, 0, 42)
+copyDebug.Position = UDim2.new(0, 14, 0, 70)
+copyDebug.Parent = ownerTools
 
 makeTab("Home", 1)
 makeTab("Games", 2)
@@ -843,6 +1034,8 @@ makeTab("Settings", 3)
 if gameSupported then
 	makeTab("Game", 4)
 end
+applyAccent(accentColor)
+applyTransparency(transparencyAmount)
 selectTab("Home")
 
 local toast = Instance.new("Frame")
@@ -868,8 +1061,17 @@ toastBody.TextTransparency = 1
 local uiOpen = true
 local shownPosition = main.Position
 local hiddenPosition = UDim2.new(shownPosition.X.Scale, shownPosition.X.Offset, shownPosition.Y.Scale, shownPosition.Y.Offset + 22)
+local toastBusy = false
 
-local function showToast()
+notify = function(titleText, bodyText, toneColor)
+	if toastBusy then
+		toast.Position = UDim2.new(1, -312, 1, 16)
+	end
+
+	toastBusy = true
+	toastTitle.Text = titleText or "Brainrot Hub"
+	toastBody.Text = bodyText or ""
+	toastTitle.TextColor3 = toneColor or colors.text
 	tween(toast, { Position = UDim2.new(1, -312, 1, -74), BackgroundTransparency = 0 }, 0.25)
 	tween(toastTitle, { TextTransparency = 0 }, 0.18)
 	tween(toastBody, { TextTransparency = 0 }, 0.18)
@@ -878,6 +1080,9 @@ local function showToast()
 			tween(toast, { Position = UDim2.new(1, -312, 1, 16), BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 			tween(toastTitle, { TextTransparency = 1 }, 0.16)
 			tween(toastBody, { TextTransparency = 1 }, 0.16)
+			task.delay(0.22, function()
+				toastBusy = false
+			end)
 		end
 	end)
 end
@@ -902,7 +1107,9 @@ local function hideUi()
 end
 
 showUi()
-task.delay(0.4, showToast)
+task.delay(0.4, function()
+	notify("Welcome to Brainrot Hub", consoleOwner and "Console Owner permissions active." or "Thanks for using the script.", consoleOwner and colors.green or colors.text)
+end)
 
 local dragging = false
 local dragStart
