@@ -43,6 +43,11 @@ local colors = {
 	yellow = Color3.fromRGB(239, 189, 82),
 }
 
+local hiddenPosition = UDim2.new(0.5, -320, 0.5, -194)
+local shownPosition = UDim2.new(0.5, -320, 0.5, -218)
+local hiddenShadowPosition = UDim2.new(0.5, -316, 0.5, -184)
+local shownShadowPosition = UDim2.new(0.5, -316, 0.5, -208)
+
 local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
 if oldGui then
 	oldGui:Destroy()
@@ -98,6 +103,13 @@ local function tween(item, props, time)
 	TweenService:Create(item, TweenInfo.new(time or 0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
 
+local function tweenWithStyle(item, props, time, style, direction)
+	local info = TweenInfo.new(time or 0.2, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out)
+	local activeTween = TweenService:Create(item, info, props)
+	activeTween:Play()
+	return activeTween
+end
+
 local function tryLoadGameFile(placeId)
 	if type(isfile) ~= "function" or type(readfile) ~= "function" or type(loadstring) ~= "function" then
 		return nil
@@ -148,24 +160,29 @@ screenGui.Parent = playerGui
 
 local shadow = Instance.new("Frame")
 shadow.Name = "Shadow"
-shadow.Size = UDim2.new(0, 610, 0, 386)
-shadow.Position = UDim2.new(0.5, -296, 0.5, -184)
+shadow.Size = UDim2.new(0, 650, 0, 434)
+shadow.Position = hiddenShadowPosition
 shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-shadow.BackgroundTransparency = 0.55
+shadow.BackgroundTransparency = 1
 shadow.BorderSizePixel = 0
 shadow.Parent = screenGui
-corner(shadow, 8)
+corner(shadow, 14)
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.new(0, 600, 0, 376)
-main.Position = UDim2.new(0.5, -300, 0.5, -194)
+main.Size = UDim2.new(0, 640, 0, 424)
+main.Position = hiddenPosition
 main.BackgroundColor3 = colors.window
+main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 main.Parent = screenGui
-corner(main, 8)
-stroke(main, colors.line, 0.18, 1)
+corner(main, 12)
+stroke(main, colors.line, 0.08, 1)
+
+local scale = Instance.new("UIScale")
+scale.Scale = 0.96
+scale.Parent = main
 
 local top = Instance.new("Frame")
 top.Name = "TopBar"
@@ -173,6 +190,22 @@ top.Size = UDim2.new(1, 0, 0, 64)
 top.BackgroundColor3 = colors.top
 top.BorderSizePixel = 0
 top.Parent = main
+
+local topGradient = Instance.new("UIGradient")
+topGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 25, 38)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 23)),
+})
+topGradient.Rotation = 0
+topGradient.Parent = top
+
+local accentLine = Instance.new("Frame")
+accentLine.Name = "AccentLine"
+accentLine.Size = UDim2.new(1, 0, 0, 1)
+accentLine.Position = UDim2.new(0, 0, 1, -1)
+accentLine.BackgroundColor3 = colors.lineSoft
+accentLine.BorderSizePixel = 0
+accentLine.Parent = top
 
 local title = label(top, "Title", "Brainrot Hub", 19, colors.title, Enum.Font.GothamBold)
 title.Size = UDim2.new(0, 260, 0, 24)
@@ -233,6 +266,7 @@ local function makePage(name)
 	local page = Instance.new("Frame")
 	page.Name = name .. "Page"
 	page.Size = UDim2.new(1, 0, 1, 0)
+	page.Position = UDim2.new(0, 0, 0, 8)
 	page.BackgroundTransparency = 1
 	page.Visible = false
 	page.Parent = content
@@ -243,7 +277,12 @@ end
 local function selectTab(name)
 	selectedTab = name
 	for pageName, page in pairs(pages) do
-		page.Visible = pageName == name
+		local active = pageName == name
+		page.Visible = active
+		if active then
+			page.Position = UDim2.new(0, 0, 0, 8)
+			tweenWithStyle(page, { Position = UDim2.new(0, 0, 0, 0) }, 0.22, Enum.EasingStyle.Quart)
+		end
 	end
 	for tabName, button in pairs(tabs) do
 		local active = tabName == name
@@ -303,6 +342,17 @@ local function makePanel(parent, size, position)
 	return panel
 end
 
+local function addPanelGradient(panel, topColor, bottomColor)
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, topColor),
+		ColorSequenceKeypoint.new(1, bottomColor),
+	})
+	gradient.Rotation = 90
+	gradient.Parent = panel
+	return gradient
+end
+
 local function makeUpdate(parent, update, order)
 	local item = makePanel(parent, UDim2.new(1, 0, 0, 58))
 	item.LayoutOrder = order
@@ -326,8 +376,22 @@ end
 
 local homePage = makePage("Home")
 
+local welcomePanel = makePanel(homePage, UDim2.new(1, 0, 0, 70))
+welcomePanel.Position = UDim2.new(0, 0, 0, 0)
+welcomePanel.BackgroundColor3 = Color3.fromRGB(19, 25, 39)
+addPanelGradient(welcomePanel, Color3.fromRGB(25, 33, 53), Color3.fromRGB(16, 20, 31))
+
+local welcomeTitle = label(welcomePanel, "WelcomeTitle", "Welcome back, " .. player.DisplayName, 17, colors.title, Enum.Font.GothamBold)
+welcomeTitle.Size = UDim2.new(1, -28, 0, 24)
+welcomeTitle.Position = UDim2.new(0, 14, 0, 10)
+
+local welcomeBody = label(welcomePanel, "WelcomeBody", "Thanks for using Brainrot Hub. Pick a tab on the left and the hub will handle game support automatically.", 12, colors.text, Enum.Font.GothamMedium)
+welcomeBody.Size = UDim2.new(1, -28, 0, 28)
+welcomeBody.Position = UDim2.new(0, 14, 0, 34)
+
 local profilePanel = makePanel(homePage, UDim2.new(1, 0, 0, 92))
-profilePanel.Position = UDim2.new(0, 0, 0, 0)
+profilePanel.Position = UDim2.new(0, 0, 0, 82)
+addPanelGradient(profilePanel, Color3.fromRGB(20, 25, 37), Color3.fromRGB(16, 20, 29))
 
 local avatar = Instance.new("ImageLabel")
 avatar.Name = "Avatar"
@@ -362,12 +426,12 @@ place.Position = UDim2.new(0, 88, 0, 60)
 
 local updatesTitle = label(homePage, "UpdatesTitle", "Updates", 15, colors.title, Enum.Font.GothamBold)
 updatesTitle.Size = UDim2.new(1, 0, 0, 24)
-updatesTitle.Position = UDim2.new(0, 0, 0, 106)
+updatesTitle.Position = UDim2.new(0, 0, 0, 188)
 
 local updatesHolder = Instance.new("Frame")
 updatesHolder.Name = "Updates"
-updatesHolder.Size = UDim2.new(1, 0, 1, -136)
-updatesHolder.Position = UDim2.new(0, 0, 0, 136)
+updatesHolder.Size = UDim2.new(1, 0, 1, -218)
+updatesHolder.Position = UDim2.new(0, 0, 0, 218)
 updatesHolder.BackgroundTransparency = 1
 updatesHolder.Parent = homePage
 
@@ -489,6 +553,71 @@ if gameSupported then
 end
 selectTab("Home")
 
+local toast = Instance.new("Frame")
+toast.Name = "WelcomeToast"
+toast.Size = UDim2.new(0, 280, 0, 54)
+toast.Position = UDim2.new(1, -298, 1, 16)
+toast.BackgroundColor3 = Color3.fromRGB(20, 25, 37)
+toast.BackgroundTransparency = 1
+toast.BorderSizePixel = 0
+toast.Parent = main
+corner(toast, 8)
+stroke(toast, colors.lineSoft, 1, 1)
+
+local toastTitle = label(toast, "ToastTitle", "Welcome to Brainrot Hub", 13, colors.title, Enum.Font.GothamBold)
+toastTitle.Size = UDim2.new(1, -24, 0, 20)
+toastTitle.Position = UDim2.new(0, 12, 0, 8)
+toastTitle.TextTransparency = 1
+
+local toastBody = label(toast, "ToastBody", "Thanks for using the script.", 11, colors.muted, Enum.Font.GothamMedium)
+toastBody.Size = UDim2.new(1, -24, 0, 18)
+toastBody.Position = UDim2.new(0, 12, 0, 28)
+toastBody.TextTransparency = 1
+
+local uiOpen = true
+
+local function showToast()
+	toast.Position = UDim2.new(1, -298, 1, 16)
+	tweenWithStyle(toast, { Position = UDim2.new(1, -298, 1, -72), BackgroundTransparency = 0 }, 0.35, Enum.EasingStyle.Back)
+	tween(toastTitle, { TextTransparency = 0 }, 0.18)
+	tween(toastBody, { TextTransparency = 0 }, 0.18)
+	task.delay(3, function()
+		if toast and toast.Parent then
+			tweenWithStyle(toast, { Position = UDim2.new(1, -298, 1, 16), BackgroundTransparency = 1 }, 0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+			tween(toastTitle, { TextTransparency = 1 }, 0.16)
+			tween(toastBody, { TextTransparency = 1 }, 0.16)
+		end
+	end)
+end
+
+local function showUi()
+	screenGui.Enabled = true
+	uiOpen = true
+	main.Position = hiddenPosition
+	shadow.Position = hiddenShadowPosition
+	main.BackgroundTransparency = 1
+	shadow.BackgroundTransparency = 1
+	scale.Scale = 0.96
+	tweenWithStyle(main, { Position = shownPosition, BackgroundTransparency = 0 }, 0.32, Enum.EasingStyle.Back)
+	tweenWithStyle(shadow, { Position = shownShadowPosition, BackgroundTransparency = 0.72 }, 0.32, Enum.EasingStyle.Quart)
+	tweenWithStyle(scale, { Scale = 1 }, 0.32, Enum.EasingStyle.Back)
+end
+
+local function hideUi()
+	uiOpen = false
+	tweenWithStyle(main, { Position = hiddenPosition, BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	tweenWithStyle(shadow, { Position = hiddenShadowPosition, BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	tweenWithStyle(scale, { Scale = 0.96 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	task.delay(0.23, function()
+		if not uiOpen then
+			screenGui.Enabled = false
+		end
+	end)
+end
+
+showUi()
+task.delay(0.45, showToast)
+
 local dragging = false
 local dragStart
 local mainStart
@@ -526,6 +655,10 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == TOGGLE_KEY then
-		screenGui.Enabled = not screenGui.Enabled
+		if uiOpen then
+			hideUi()
+		else
+			showUi()
+		end
 	end
 end)
