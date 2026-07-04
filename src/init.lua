@@ -15,8 +15,8 @@ local CONFIG_FALLBACK_FILE = "BrainrotHub_settings.cfg"
 
 local SupportedGameList = {
 	-- Add jobId to try joining a specific public server:
-	-- { placeId = 114640202062357, jobId = "SERVER_JOB_ID_HERE", name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
-	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
+	-- { placeId = 97508801613157, jobId = "fc87d6d3-cdbd-41b6-bbc3-55c4a7572c16", name = "Parkour Run For Brainrots!", description = "Supported Brainrot Game!" },
+	{ placeId = 97508801613157, name = "Parkour Run For Brainrots!", description = "Supported Brainrot Game!" },
 }
 
 local ConsoleOwners = {
@@ -32,6 +32,60 @@ local Updates = {
 }
 
 local SupportedGames = {
+	[97508801613157] = {
+		name = "Parkour Run for Brainrots",
+		actions = {
+			{
+				title = "Toggle Mythical Farm",
+				description = "Moves to the farm spot and buys when mythical brainrots spawn.",
+				callback = function()
+					local env = getgenv and getgenv() or _G
+					env.brainrotHubFarming = not env.brainrotHubFarming
+
+					if not env.brainrotHubFarming then
+						return
+					end
+
+					local plr = game:GetService("Players").LocalPlayer
+					local replicatedStorage = game:GetService("ReplicatedStorage")
+					local event = replicatedStorage
+						:WaitForChild("Packages")
+						:WaitForChild("_Index")
+						:WaitForChild("sleitnick_net@0.2.0")
+						:WaitForChild("net")
+						:WaitForChild("RF/Buy NeuronBase")
+
+					task.spawn(function()
+						while env.brainrotHubFarming do
+							local character = plr.Character or plr.CharacterAdded:Wait()
+							character:MoveTo(Vector3.new(12378, 1498, 231))
+
+							local spawner = workspace:FindFirstChild("BG_BrainrotSpawner")
+							if spawner then
+								for _, spawnFolder in ipairs(spawner:GetChildren()) do
+									local brainrot = spawnFolder:FindFirstChildOfClass("Model")
+									if spawnFolder.Name == "Mythical" and brainrot and brainrot.PrimaryPart then
+										if not brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt") then
+											repeat
+												task.wait()
+											until not env.brainrotHubFarming or brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
+										end
+
+										if env.brainrotHubFarming then
+											event:FireServer()
+											task.wait(1)
+										end
+									end
+								end
+							end
+
+							task.wait(0.1)
+						end
+					end)
+				end,
+			},
+		},
+	},
 	-- [114640202062357] = {
 	-- 	name = "Swing Obby for Brainrots",
 	-- 	actions = {
@@ -367,7 +421,7 @@ local title = label(header, "Title", "Brainrot Hub", 19, colors.text, Enum.Font.
 title.Size = UDim2.new(0, 260, 0, 24)
 title.Position = UDim2.new(0, 18, 0, 11)
 
-local subtitle = label(header, "Subtitle", "F1 toggles the menu", 12, colors.muted, Enum.Font.GothamMedium)
+local subtitle = label(header, "Subtitle", "the BEST brainrot script for slop ahh games, fake it till you make it", 12, colors.muted, Enum.Font.GothamMedium)
 subtitle.Size = UDim2.new(0, 340, 0, 18)
 subtitle.Position = UDim2.new(0, 18, 0, 37)
 
