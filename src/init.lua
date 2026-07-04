@@ -11,7 +11,9 @@ local TOGGLE_KEY = Enum.KeyCode.F1
 local GAME_FOLDER = "FUCKASS GAMES"
 
 local SupportedGameList = {
-	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "Test supported script." },
+	-- Add jobId to try joining a specific public server:
+	-- { placeId = 114640202062357, jobId = "SERVER_JOB_ID_HERE", name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
+	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "Supported Brainrot Game!" },
 }
 
 local Updates = {
@@ -43,6 +45,21 @@ local colors = {
 	red = Color3.fromRGB(255, 93, 127),
 	yellow = Color3.fromRGB(242, 194, 88),
 }
+
+local accentColor = colors.blue
+local themedObjects = {}
+local transparentObjects = {}
+
+local function trackTheme(object, property)
+	table.insert(themedObjects, { object = object, property = property or "BackgroundColor3" })
+	object[property or "BackgroundColor3"] = accentColor
+	return object
+end
+
+local function trackTransparency(object, baseTransparency)
+	table.insert(transparentObjects, { object = object, base = baseTransparency or object.BackgroundTransparency or 0 })
+	return object
+end
 
 local function corner(parent, radius)
 	local item = Instance.new("UICorner")
@@ -214,6 +231,7 @@ main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 main.Parent = screenGui
+trackTransparency(main, 0)
 corner(main, 22)
 stroke(main, Color3.fromRGB(72, 88, 126), 0.22, 1)
 gradient(main, Color3.fromRGB(15, 18, 28), Color3.fromRGB(7, 9, 15))
@@ -229,6 +247,7 @@ header.Position = UDim2.new(0, 14, 0, 14)
 header.BackgroundColor3 = colors.surface
 header.BorderSizePixel = 0
 header.Parent = main
+trackTransparency(header, 0)
 corner(header, 18)
 stroke(header, colors.line, 0.38, 1)
 gradient(header, Color3.fromRGB(20, 25, 38), Color3.fromRGB(13, 16, 25))
@@ -267,6 +286,7 @@ sidebar.Size = UDim2.new(0, 150, 1, 0)
 sidebar.BackgroundColor3 = colors.surface
 sidebar.BorderSizePixel = 0
 sidebar.Parent = body
+trackTransparency(sidebar, 0)
 corner(sidebar, 18)
 stroke(sidebar, colors.line, 0.5, 1)
 gradient(sidebar, Color3.fromRGB(16, 20, 31), Color3.fromRGB(10, 13, 20))
@@ -285,6 +305,7 @@ contentShell.BackgroundColor3 = colors.surface
 contentShell.BorderSizePixel = 0
 contentShell.ClipsDescendants = true
 contentShell.Parent = body
+trackTransparency(contentShell, 0)
 corner(contentShell, 18)
 stroke(contentShell, colors.line, 0.5, 1)
 gradient(contentShell, Color3.fromRGB(15, 19, 29), Color3.fromRGB(9, 12, 18))
@@ -301,13 +322,14 @@ local function makePage(name)
 	page.BackgroundTransparency = 1
 	page.BorderSizePixel = 0
 	page.ScrollBarThickness = 5
-	page.ScrollBarImageColor3 = colors.blue
+	page.ScrollBarImageColor3 = accentColor
 	page.ScrollBarImageTransparency = 0.18
 	page.ScrollingDirection = Enum.ScrollingDirection.Y
 	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	page.CanvasSize = UDim2.new(0, 0, 0, 0)
 	page.Visible = false
 	page.Parent = contentShell
+	trackTheme(page, "ScrollBarImageColor3")
 	padding(page, 2, 14, 2, 20)
 	pages[name] = page
 	return page
@@ -322,7 +344,7 @@ local function selectTab(name)
 	for tabName, button in pairs(tabs) do
 		local active = tabName == name
 		tween(button, {
-			BackgroundColor3 = active and colors.blue or colors.surface2,
+			BackgroundColor3 = active and accentColor or colors.surface2,
 			TextColor3 = active and Color3.fromRGB(255, 255, 255) or colors.text,
 		}, 0.14)
 	end
@@ -371,6 +393,7 @@ local function makePanel(parent, height)
 	panel.BackgroundColor3 = colors.surface2
 	panel.BorderSizePixel = 0
 	panel.Parent = parent
+	trackTransparency(panel, 0)
 	corner(panel, 16)
 	stroke(panel, colors.line, 0.52, 1)
 	gradient(panel, Color3.fromRGB(22, 27, 41), Color3.fromRGB(15, 19, 29))
@@ -413,9 +436,10 @@ local function makeSupportedGameButton(parent, entry, order)
 	local accent = Instance.new("Frame")
 	accent.Size = UDim2.new(0, 5, 1, -26)
 	accent.Position = UDim2.new(0, 14, 0, 13)
-	accent.BackgroundColor3 = colors.blue
+	accent.BackgroundColor3 = accentColor
 	accent.BorderSizePixel = 0
 	accent.Parent = button
+	trackTheme(accent)
 	corner(accent, 5)
 
 	local gameTitle = label(button, "GameTitle", entry.name or ("Place " .. tostring(entry.placeId)), 14, colors.text, Enum.Font.GothamBold)
@@ -429,7 +453,7 @@ local function makeSupportedGameButton(parent, entry, order)
 	local join = Instance.new("TextLabel")
 	join.Size = UDim2.new(0, 88, 0, 32)
 	join.Position = UDim2.new(1, -104, 0.5, -16)
-	join.BackgroundColor3 = colors.blue
+	join.BackgroundColor3 = accentColor
 	join.BorderSizePixel = 0
 	join.Font = Enum.Font.GothamBold
 	join.Text = "Join"
@@ -437,6 +461,7 @@ local function makeSupportedGameButton(parent, entry, order)
 	join.TextSize = 12
 	join.Parent = button
 	corner(join, 14)
+	trackTheme(join)
 
 	button.MouseEnter:Connect(function()
 		tween(button, { BackgroundColor3 = colors.surface3 }, 0.12)
@@ -445,12 +470,29 @@ local function makeSupportedGameButton(parent, entry, order)
 
 	button.MouseLeave:Connect(function()
 		tween(button, { BackgroundColor3 = colors.surface2 }, 0.12)
-		tween(join, { BackgroundColor3 = colors.blue }, 0.12)
+		tween(join, { BackgroundColor3 = accentColor }, 0.12)
 	end)
 
 	button.MouseButton1Click:Connect(function()
 		if entry.placeId then
-			TeleportService:Teleport(entry.placeId, player)
+			join.Text = "Joining..."
+			local ok = pcall(function()
+				if entry.jobId then
+					TeleportService:TeleportToPlaceInstance(entry.placeId, entry.jobId, player)
+				else
+					TeleportService:Teleport(entry.placeId, player)
+				end
+			end)
+			if not ok then
+				join.Text = "Restricted"
+				join.BackgroundColor3 = colors.red
+				task.delay(2, function()
+					if join and join.Parent then
+						join.Text = "Join"
+						join.BackgroundColor3 = accentColor
+					end
+				end)
+			end
 		end
 	end)
 
@@ -516,10 +558,10 @@ for index, update in ipairs(Updates) do
 	updateBody.Position = UDim2.new(0, 30, 0, 31)
 end
 
-local hubPage = makePage("Brainrot Hub")
-addVerticalLayout(hubPage, 12)
+local gamesPage = makePage("Games")
+addVerticalLayout(gamesPage, 12)
 
-local supportPanel = makePanel(hubPage, 126)
+local supportPanel = makePanel(gamesPage, 126)
 local supportTitle = label(supportPanel, "SupportTitle", gameSupported and "This game is supported" or "This game is not supported yet", 18, gameSupported and colors.green or colors.red, Enum.Font.GothamBold)
 supportTitle.Size = UDim2.new(1, -170, 0, 28)
 supportTitle.Position = UDim2.new(0, 16, 0, 15)
@@ -545,7 +587,7 @@ corner(statusPill, 14)
 local stats = Instance.new("Frame")
 stats.Size = UDim2.new(1, 0, 0, 78)
 stats.BackgroundTransparency = 1
-stats.Parent = hubPage
+stats.Parent = gamesPage
 local statsLayout = Instance.new("UIListLayout")
 statsLayout.FillDirection = Enum.FillDirection.Horizontal
 statsLayout.Padding = UDim.new(0, 10)
@@ -555,11 +597,11 @@ makeInfoCard(stats, "PlaceId", tostring(game.PlaceId), colors.text).Size = UDim2
 makeInfoCard(stats, "Supported Games", tostring(#supportedGames), colors.blue).Size = UDim2.new(0.333, -7, 0, 78)
 makeInfoCard(stats, "Status", gameSupported and "Ready" or "Unsupported", gameSupported and colors.green or colors.yellow).Size = UDim2.new(0.333, -7, 0, 78)
 
-local listTitle = label(hubPage, "ListTitle", gameSupported and "Other Supported Games" or "Supported Games", 15, colors.text, Enum.Font.GothamBold)
+local listTitle = label(gamesPage, "ListTitle", gameSupported and "Other Supported Games" or "Supported Games", 15, colors.text, Enum.Font.GothamBold)
 listTitle.Size = UDim2.new(1, 0, 0, 26)
 
 if #supportedGames == 0 then
-	local empty = makePanel(hubPage, 78)
+	local empty = makePanel(gamesPage, 78)
 	local emptyTitle = label(empty, "EmptyTitle", "No supported games listed yet", 14, colors.text, Enum.Font.GothamBold)
 	emptyTitle.Size = UDim2.new(1, -28, 0, 22)
 	emptyTitle.Position = UDim2.new(0, 14, 0, 13)
@@ -568,7 +610,7 @@ if #supportedGames == 0 then
 	emptyBody.Position = UDim2.new(0, 14, 0, 37)
 else
 	for index, entry in ipairs(supportedGames) do
-		makeSupportedGameButton(hubPage, entry, index)
+		makeSupportedGameButton(gamesPage, entry, index)
 	end
 end
 
@@ -621,10 +663,185 @@ if gameSupported then
 	end
 end
 
+local function applyAccent(newColor)
+	accentColor = newColor
+	colors.blue = newColor
+
+	for _, item in ipairs(themedObjects) do
+		if item.object and item.object.Parent then
+			item.object[item.property] = newColor
+		end
+	end
+
+	if selectedTab and tabs[selectedTab] then
+		tabs[selectedTab].BackgroundColor3 = newColor
+	end
+end
+
+local function applyTransparency(amount)
+	for _, item in ipairs(transparentObjects) do
+		if item.object and item.object.Parent then
+			item.object.BackgroundTransparency = math.clamp(item.base + amount, 0, 0.82)
+		end
+	end
+end
+
+local function makeSettingButton(parent, text, callback)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, 0, 0, 42)
+	button.BackgroundColor3 = colors.surface2
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = false
+	button.Font = Enum.Font.GothamSemibold
+	button.Text = text
+	button.TextColor3 = colors.text
+	button.TextSize = 13
+	button.TextXAlignment = Enum.TextXAlignment.Left
+	button.Parent = parent
+	corner(button, 14)
+	stroke(button, colors.line, 0.5, 1)
+	padding(button, 14, 14, 0, 0)
+	trackTransparency(button, 0)
+
+	button.MouseEnter:Connect(function()
+		tween(button, { BackgroundColor3 = colors.surface3 }, 0.12)
+	end)
+
+	button.MouseLeave:Connect(function()
+		tween(button, { BackgroundColor3 = colors.surface2 }, 0.12)
+	end)
+
+	button.MouseButton1Click:Connect(callback)
+	return button
+end
+
+local settingsPage = makePage("Settings")
+addVerticalLayout(settingsPage, 12)
+
+local settingsIntro = makePanel(settingsPage, 86)
+local settingsTitle = label(settingsIntro, "SettingsTitle", "Settings", 18, colors.text, Enum.Font.GothamBold)
+settingsTitle.Size = UDim2.new(1, -28, 0, 26)
+settingsTitle.Position = UDim2.new(0, 14, 0, 13)
+local settingsBody = label(settingsIntro, "SettingsBody", "Change the accent color, transparency, and install an autoexec loader when your executor supports file writes.", 12, colors.muted, Enum.Font.GothamMedium)
+settingsBody.Size = UDim2.new(1, -28, 0, 34)
+settingsBody.Position = UDim2.new(0, 14, 0, 41)
+
+local colorPanel = makePanel(settingsPage, 118)
+local colorTitle = label(colorPanel, "ColorTitle", "UI Color", 15, colors.text, Enum.Font.GothamBold)
+colorTitle.Size = UDim2.new(1, -28, 0, 24)
+colorTitle.Position = UDim2.new(0, 14, 0, 12)
+
+local colorButtons = Instance.new("Frame")
+colorButtons.Size = UDim2.new(1, -28, 0, 48)
+colorButtons.Position = UDim2.new(0, 14, 0, 50)
+colorButtons.BackgroundTransparency = 1
+colorButtons.Parent = colorPanel
+
+local colorLayout = Instance.new("UIListLayout")
+colorLayout.FillDirection = Enum.FillDirection.Horizontal
+colorLayout.Padding = UDim.new(0, 10)
+colorLayout.SortOrder = Enum.SortOrder.LayoutOrder
+colorLayout.Parent = colorButtons
+
+local swatches = {
+	{ "Blue", Color3.fromRGB(79, 126, 255) },
+	{ "Pink", Color3.fromRGB(255, 93, 161) },
+	{ "Green", Color3.fromRGB(74, 221, 151) },
+	{ "Gold", Color3.fromRGB(242, 194, 88) },
+}
+
+for _, swatch in ipairs(swatches) do
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.25, -8, 0, 42)
+	button.BackgroundColor3 = swatch[2]
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = false
+	button.Font = Enum.Font.GothamBold
+	button.Text = swatch[1]
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.TextSize = 12
+	button.Parent = colorButtons
+	corner(button, 14)
+	button.MouseButton1Click:Connect(function()
+		applyAccent(swatch[2])
+	end)
+end
+
+local transparencyPanel = makePanel(settingsPage, 166)
+local transparencyTitle = label(transparencyPanel, "TransparencyTitle", "Transparency", 15, colors.text, Enum.Font.GothamBold)
+transparencyTitle.Size = UDim2.new(1, -28, 0, 24)
+transparencyTitle.Position = UDim2.new(0, 14, 0, 12)
+local transparencyBody = label(transparencyPanel, "TransparencyBody", "Pick how see-through the menu should be.", 12, colors.muted, Enum.Font.GothamMedium)
+transparencyBody.Size = UDim2.new(1, -28, 0, 22)
+transparencyBody.Position = UDim2.new(0, 14, 0, 38)
+
+local transparencyButtons = Instance.new("Frame")
+transparencyButtons.Size = UDim2.new(1, -28, 0, 92)
+transparencyButtons.Position = UDim2.new(0, 14, 0, 64)
+transparencyButtons.BackgroundTransparency = 1
+transparencyButtons.Parent = transparencyPanel
+
+local transparencyLayout = Instance.new("UIListLayout")
+transparencyLayout.Padding = UDim.new(0, 8)
+transparencyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+transparencyLayout.Parent = transparencyButtons
+
+makeSettingButton(transparencyButtons, "Solid", function() applyTransparency(0) end)
+makeSettingButton(transparencyButtons, "Light Transparency", function() applyTransparency(0.18) end)
+
+local autoPanel = makePanel(settingsPage, 154)
+local autoTitle = label(autoPanel, "AutoTitle", "Auto Inject", 15, colors.text, Enum.Font.GothamBold)
+autoTitle.Size = UDim2.new(1, -28, 0, 24)
+autoTitle.Position = UDim2.new(0, 14, 0, 12)
+local autoBody = label(autoPanel, "AutoBody", "Creates an autoexec loader file for executors that support writefile. This cannot bypass executor permissions.", 12, colors.muted, Enum.Font.GothamMedium)
+autoBody.Size = UDim2.new(1, -28, 0, 42)
+autoBody.Position = UDim2.new(0, 14, 0, 38)
+
+local autoStatus = label(autoPanel, "AutoStatus", "Not installed", 12, colors.yellow, Enum.Font.GothamSemibold)
+autoStatus.Size = UDim2.new(1, -28, 0, 22)
+autoStatus.Position = UDim2.new(0, 14, 0, 82)
+
+local installButton = makeSettingButton(autoPanel, "Install Autoexec Loader", function()
+	if type(writefile) ~= "function" then
+		autoStatus.Text = "writefile is not supported by this executor"
+		autoStatus.TextColor3 = colors.red
+		return
+	end
+
+	local loader = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Adottgt/Brainrot-Hub/main/src/init.lua"))()]]
+	local paths = {
+		"autoexec/BrainrotHub.lua",
+		"autoexecute/BrainrotHub.lua",
+		"BrainrotHub.autoexec.lua",
+	}
+
+	local installed = false
+	for _, path in ipairs(paths) do
+		local ok = pcall(function()
+			writefile(path, loader)
+		end)
+		if ok then
+			installed = true
+			autoStatus.Text = "Installed to " .. path
+			autoStatus.TextColor3 = colors.green
+			break
+		end
+	end
+
+	if not installed then
+		autoStatus.Text = "Could not write autoexec file"
+		autoStatus.TextColor3 = colors.red
+	end
+end)
+installButton.Size = UDim2.new(1, -28, 0, 42)
+installButton.Position = UDim2.new(0, 14, 0, 104)
+installButton.Parent = autoPanel
+
 makeTab("Home", 1)
-makeTab("Brainrot Hub", 2)
+makeTab("Games", 2)
+makeTab("Settings", 3)
 if gameSupported then
-	makeTab("Game", 3)
+	makeTab("Game", 4)
 end
 selectTab("Home")
 
