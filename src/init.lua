@@ -39,49 +39,7 @@ local SupportedGames = {
 				title = "Toggle Mythical Farm",
 				description = "Moves to the farm spot and buys when mythical brainrots spawn.",
 				callback = function()
-					local env = getgenv and getgenv() or _G
-					env.brainrotHubFarming = not env.brainrotHubFarming
-
-					if not env.brainrotHubFarming then
-						return
-					end
-
-					local plr = game:GetService("Players").LocalPlayer
-					local replicatedStorage = game:GetService("ReplicatedStorage")
-					local event = replicatedStorage
-						:WaitForChild("Packages")
-						:WaitForChild("_Index")
-						:WaitForChild("sleitnick_net@0.2.0")
-						:WaitForChild("net")
-						:WaitForChild("RF/Buy NeuronBase")
-
-					task.spawn(function()
-						while env.brainrotHubFarming do
-							local character = plr.Character or plr.CharacterAdded:Wait()
-							character:MoveTo(Vector3.new(12378, 1498, 231))
-
-							local spawner = workspace:FindFirstChild("BG_BrainrotSpawner")
-							if spawner then
-								for _, spawnFolder in ipairs(spawner:GetChildren()) do
-									local brainrot = spawnFolder:FindFirstChildOfClass("Model")
-									if spawnFolder.Name == "Mythical" and brainrot and brainrot.PrimaryPart then
-										if not brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt") then
-											repeat
-												task.wait()
-											until not env.brainrotHubFarming or brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
-										end
-
-										if env.brainrotHubFarming then
-											event:FireServer()
-											task.wait(1)
-										end
-									end
-								end
-							end
-
-							task.wait(0.1)
-						end
-					end)
+					print("Farm toggled")
 				end,
 			},
 		},
