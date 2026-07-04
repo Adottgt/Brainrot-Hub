@@ -3,6 +3,9 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TeleportService = game:GetService("TeleportService")
+local SupportedGameList = {
+	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "test supported script" },
+}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
