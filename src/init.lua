@@ -2,6 +2,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
+local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -25,12 +26,17 @@ local SupportedGames = {
 	-- },
 }
 
+local SupportedGameList = {
+	-- Put supported games here so unsupported users can teleport to them:
+	-- { placeId = 123456789, name = "Supported Game", description = "Short description of this script." },
+}
+
 local colors = {
 	window = Color3.fromRGB(10, 12, 18),
-	top = Color3.fromRGB(15, 18, 27),
-	side = Color3.fromRGB(12, 15, 22),
-	panel = Color3.fromRGB(18, 22, 32),
-	panelAlt = Color3.fromRGB(21, 26, 38),
+	top = Color3.fromRGB(16, 19, 29),
+	side = Color3.fromRGB(13, 16, 24),
+	panel = Color3.fromRGB(19, 23, 34),
+	panelAlt = Color3.fromRGB(24, 30, 44),
 	line = Color3.fromRGB(52, 62, 86),
 	lineSoft = Color3.fromRGB(35, 42, 59),
 	title = Color3.fromRGB(246, 248, 255),
@@ -43,8 +49,8 @@ local colors = {
 	yellow = Color3.fromRGB(239, 189, 82),
 }
 
-local hiddenPosition = UDim2.new(0.5, -340, 0.5, -184)
-local shownPosition = UDim2.new(0.5, -340, 0.5, -208)
+local hiddenPosition = UDim2.new(0.5, -360, 0.5, -202)
+local shownPosition = UDim2.new(0.5, -360, 0.5, -226)
 
 local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
 if oldGui then
@@ -142,6 +148,35 @@ local function getExperienceName()
 	return ok and info and info.Name or "Current Experience"
 end
 
+local function buildSupportedGameList()
+	local seen = {}
+	local list = {}
+
+	for _, entry in ipairs(SupportedGameList) do
+		if entry.placeId and not seen[entry.placeId] then
+			seen[entry.placeId] = true
+			table.insert(list, entry)
+		end
+	end
+
+	for placeId, config in pairs(SupportedGames) do
+		if not seen[placeId] then
+			seen[placeId] = true
+			table.insert(list, {
+				placeId = placeId,
+				name = type(config) == "table" and config.name or "Supported Game",
+				description = "Built into this hub.",
+			})
+		end
+	end
+
+	table.sort(list, function(a, b)
+		return tostring(a.name or a.placeId) < tostring(b.name or b.placeId)
+	end)
+
+	return list
+end
+
 local gameConfig, loadedPath = SupportedGames[game.PlaceId], "Built-in table"
 if not gameConfig then
 	gameConfig, loadedPath = tryLoadGameFile(game.PlaceId)
@@ -149,6 +184,7 @@ end
 
 local gameSupported = type(gameConfig) == "table"
 local gameName = gameSupported and (gameConfig.name or getExperienceName()) or getExperienceName()
+local supportedGameList = buildSupportedGameList()
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BrainrotHubGui"
@@ -158,7 +194,7 @@ screenGui.Parent = playerGui
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.new(0, 680, 0, 416)
+main.Size = UDim2.new(0, 720, 0, 452)
 main.Position = hiddenPosition
 main.BackgroundColor3 = colors.window
 main.BackgroundTransparency = 1
@@ -199,7 +235,7 @@ local title = label(top, "Title", "Brainrot Hub", 19, colors.title, Enum.Font.Go
 title.Size = UDim2.new(0, 260, 0, 24)
 title.Position = UDim2.new(0, 20, 0, 11)
 
-local subtitle = label(top, "Subtitle", "F1 toggles the menu", 12, colors.muted, Enum.Font.GothamMedium)
+local subtitle = label(top, "Subtitle", "the BEST brainrot hub script for slop games, fake it till you make it", 12, colors.muted, Enum.Font.GothamMedium)
 subtitle.Size = UDim2.new(0, 280, 0, 18)
 subtitle.Position = UDim2.new(0, 20, 0, 37)
 
@@ -377,6 +413,69 @@ local function makeUpdate(parent, update, order)
 	return item
 end
 
+local function makeSupportedGameButton(parent, entry, order)
+	local button = Instance.new("TextButton")
+	button.Name = "SupportedGame"
+	button.Size = UDim2.new(1, 0, 0, 72)
+	button.BackgroundColor3 = colors.panel
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = false
+	button.Text = ""
+	button.LayoutOrder = order
+	button.Parent = parent
+	corner(button, 14)
+	stroke(button, colors.lineSoft, 0.12, 1)
+	addPanelGradient(button, Color3.fromRGB(24, 30, 45), Color3.fromRGB(17, 21, 31))
+
+	local glow = Instance.new("Frame")
+	glow.Name = "Accent"
+	glow.Size = UDim2.new(0, 5, 1, -24)
+	glow.Position = UDim2.new(0, 14, 0, 12)
+	glow.BackgroundColor3 = colors.blue
+	glow.BorderSizePixel = 0
+	glow.Parent = button
+	corner(glow, 5)
+
+	local gameTitle = label(button, "GameTitle", entry.name or ("Place " .. tostring(entry.placeId)), 14, colors.title, Enum.Font.GothamBold)
+	gameTitle.Size = UDim2.new(1, -150, 0, 22)
+	gameTitle.Position = UDim2.new(0, 30, 0, 12)
+
+	local gameBody = label(button, "GameBody", entry.description or "Supported by Brainrot Hub.", 11, colors.muted, Enum.Font.GothamMedium)
+	gameBody.Size = UDim2.new(1, -150, 0, 22)
+	gameBody.Position = UDim2.new(0, 30, 0, 36)
+
+	local join = Instance.new("TextLabel")
+	join.Name = "Join"
+	join.Size = UDim2.new(0, 92, 0, 30)
+	join.Position = UDim2.new(1, -106, 0.5, -15)
+	join.BackgroundColor3 = colors.blue
+	join.BorderSizePixel = 0
+	join.Font = Enum.Font.GothamBold
+	join.Text = "Join"
+	join.TextColor3 = Color3.fromRGB(255, 255, 255)
+	join.TextSize = 12
+	join.Parent = button
+	corner(join, 10)
+
+	button.MouseEnter:Connect(function()
+		tween(button, { BackgroundColor3 = colors.panelAlt }, 0.12)
+		tween(join, { BackgroundColor3 = Color3.fromRGB(94, 143, 255) }, 0.12)
+	end)
+
+	button.MouseLeave:Connect(function()
+		tween(button, { BackgroundColor3 = colors.panel }, 0.12)
+		tween(join, { BackgroundColor3 = colors.blue }, 0.12)
+	end)
+
+	button.MouseButton1Click:Connect(function()
+		if entry.placeId then
+			TeleportService:Teleport(entry.placeId, player)
+		end
+	end)
+
+	return button
+end
+
 local homePage = makePage("Home")
 
 local welcomePanel = makePanel(homePage, UDim2.new(1, 0, 0, 70))
@@ -449,44 +548,101 @@ end
 
 local hubPage = makePage("Brainrot Hub")
 
-local supportPanel = makePanel(hubPage, UDim2.new(1, 0, 0, 112))
+local supportPanel = makePanel(hubPage, UDim2.new(1, 0, 0, 126))
 supportPanel.Position = UDim2.new(0, 0, 0, 0)
+supportPanel.BackgroundColor3 = Color3.fromRGB(21, 26, 39)
+addPanelGradient(supportPanel, Color3.fromRGB(28, 35, 54), Color3.fromRGB(17, 21, 32))
 
 local supportTitle = label(supportPanel, "SupportTitle", gameSupported and "This game is supported" or "This game is not supported yet", 18, gameSupported and colors.green or colors.red, Enum.Font.GothamBold)
-supportTitle.Size = UDim2.new(1, -28, 0, 28)
-supportTitle.Position = UDim2.new(0, 14, 0, 14)
+supportTitle.Size = UDim2.new(1, -180, 0, 28)
+supportTitle.Position = UDim2.new(0, 18, 0, 16)
 
-local supportBody = label(supportPanel, "SupportBody", gameSupported and ("Loaded config for " .. gameName .. ".") or "No config matched this PlaceId. Add a file named with this PlaceId to support it.", 12, colors.text, Enum.Font.Gotham)
-supportBody.Size = UDim2.new(1, -28, 0, 38)
-supportBody.Position = UDim2.new(0, 14, 0, 44)
+local supportBodyText = gameSupported
+	and ("Loaded config for " .. gameName .. ". The Game tab is ready.")
+	or "Pick a supported game below to teleport there, or add this PlaceId to your configs."
+local supportBody = label(supportPanel, "SupportBody", supportBodyText, 12, colors.text, Enum.Font.GothamMedium)
+supportBody.Size = UDim2.new(1, -36, 0, 34)
+supportBody.Position = UDim2.new(0, 18, 0, 47)
 
 local sourceText = gameSupported and ("Source: " .. tostring(loadedPath or "Unknown")) or ("Expected file: " .. GAME_FOLDER .. "/" .. tostring(game.PlaceId) .. ".lua")
 local source = label(supportPanel, "Source", sourceText, 11, colors.muted, Enum.Font.GothamMedium)
-source.Size = UDim2.new(1, -28, 0, 18)
-source.Position = UDim2.new(0, 14, 0, 82)
+source.Size = UDim2.new(1, -36, 0, 18)
+source.Position = UDim2.new(0, 18, 0, 88)
+
+local supportStatus = Instance.new("TextLabel")
+supportStatus.Name = "SupportStatus"
+supportStatus.Size = UDim2.new(0, 132, 0, 34)
+supportStatus.Position = UDim2.new(1, -150, 0, 18)
+supportStatus.BackgroundColor3 = gameSupported and Color3.fromRGB(23, 88, 64) or Color3.fromRGB(88, 40, 55)
+supportStatus.BorderSizePixel = 0
+supportStatus.Font = Enum.Font.GothamBold
+supportStatus.Text = gameSupported and "READY" or "NO CONFIG"
+supportStatus.TextColor3 = gameSupported and Color3.fromRGB(177, 255, 223) or Color3.fromRGB(255, 171, 190)
+supportStatus.TextSize = 12
+supportStatus.Parent = supportPanel
+corner(supportStatus, 12)
 
 local infoGrid = Instance.new("Frame")
 infoGrid.Size = UDim2.new(1, 0, 0, 86)
-infoGrid.Position = UDim2.new(0, 0, 0, 126)
+infoGrid.Position = UDim2.new(0, 0, 0, 140)
 infoGrid.BackgroundTransparency = 1
 infoGrid.Parent = hubPage
 
-local leftInfo = makePanel(infoGrid, UDim2.new(0.5, -6, 1, 0), UDim2.new(0, 0, 0, 0))
-local rightInfo = makePanel(infoGrid, UDim2.new(0.5, -6, 1, 0), UDim2.new(0.5, 6, 0, 0))
+local leftInfo = makePanel(infoGrid, UDim2.new(0.333, -8, 1, 0), UDim2.new(0, 0, 0, 0))
+local middleInfo = makePanel(infoGrid, UDim2.new(0.334, -8, 1, 0), UDim2.new(0.333, 4, 0, 0))
+local rightInfo = makePanel(infoGrid, UDim2.new(0.333, -8, 1, 0), UDim2.new(0.667, 8, 0, 0))
 
 local placeTitle = label(leftInfo, "PlaceTitle", "PlaceId", 12, colors.muted, Enum.Font.GothamSemibold)
 placeTitle.Size = UDim2.new(1, -24, 0, 18)
 placeTitle.Position = UDim2.new(0, 12, 0, 12)
-local placeValue = label(leftInfo, "PlaceValue", tostring(game.PlaceId), 16, colors.title, Enum.Font.GothamBold)
+local placeValue = label(leftInfo, "PlaceValue", tostring(game.PlaceId), 14, colors.title, Enum.Font.GothamBold)
 placeValue.Size = UDim2.new(1, -24, 0, 26)
 placeValue.Position = UDim2.new(0, 12, 0, 36)
+
+local supportedTitle = label(middleInfo, "SupportedTitle", "Supported Games", 12, colors.muted, Enum.Font.GothamSemibold)
+supportedTitle.Size = UDim2.new(1, -24, 0, 18)
+supportedTitle.Position = UDim2.new(0, 12, 0, 12)
+local supportedValue = label(middleInfo, "SupportedValue", tostring(#supportedGameList), 18, colors.blue, Enum.Font.GothamBold)
+supportedValue.Size = UDim2.new(1, -24, 0, 26)
+supportedValue.Position = UDim2.new(0, 12, 0, 36)
 
 local statusTitle = label(rightInfo, "StatusTitle", "Status", 12, colors.muted, Enum.Font.GothamSemibold)
 statusTitle.Size = UDim2.new(1, -24, 0, 18)
 statusTitle.Position = UDim2.new(0, 12, 0, 12)
-local statusValue = label(rightInfo, "StatusValue", gameSupported and "Ready" or "Waiting for config", 16, gameSupported and colors.green or colors.yellow, Enum.Font.GothamBold)
+local statusValue = label(rightInfo, "StatusValue", gameSupported and "Ready" or "Unsupported", 16, gameSupported and colors.green or colors.yellow, Enum.Font.GothamBold)
 statusValue.Size = UDim2.new(1, -24, 0, 26)
 statusValue.Position = UDim2.new(0, 12, 0, 36)
+
+local supportedListTitle = label(hubPage, "SupportedListTitle", gameSupported and "Other Supported Games" or "Supported Games", 15, colors.title, Enum.Font.GothamBold)
+supportedListTitle.Size = UDim2.new(1, 0, 0, 24)
+supportedListTitle.Position = UDim2.new(0, 0, 0, 244)
+
+local supportedList = Instance.new("Frame")
+supportedList.Name = "SupportedGames"
+supportedList.Size = UDim2.new(1, 0, 0, math.max(84, #supportedGameList * 80))
+supportedList.Position = UDim2.new(0, 0, 0, 274)
+supportedList.BackgroundTransparency = 1
+supportedList.Parent = hubPage
+
+local supportedLayout = Instance.new("UIListLayout")
+supportedLayout.Padding = UDim.new(0, 8)
+supportedLayout.SortOrder = Enum.SortOrder.LayoutOrder
+supportedLayout.Parent = supportedList
+
+if #supportedGameList == 0 then
+	local emptyList = makePanel(supportedList, UDim2.new(1, 0, 0, 76))
+	emptyList.LayoutOrder = 1
+	local emptyTitle = label(emptyList, "EmptyTitle", "No supported games listed yet", 14, colors.title, Enum.Font.GothamBold)
+	emptyTitle.Size = UDim2.new(1, -28, 0, 22)
+	emptyTitle.Position = UDim2.new(0, 14, 0, 12)
+	local emptyBody = label(emptyList, "EmptyBody", "Add entries to SupportedGameList so unsupported users can teleport to them.", 12, colors.muted, Enum.Font.Gotham)
+	emptyBody.Size = UDim2.new(1, -28, 0, 28)
+	emptyBody.Position = UDim2.new(0, 14, 0, 36)
+else
+	for index, entry in ipairs(supportedGameList) do
+		makeSupportedGameButton(supportedList, entry, index)
+	end
+end
 
 if gameSupported then
 	local gamePage = makePage("Game")
