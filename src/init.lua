@@ -43,8 +43,8 @@ local colors = {
 	yellow = Color3.fromRGB(239, 189, 82),
 }
 
-local hiddenPosition = UDim2.new(0.5, -320, 0.5, -194)
-local shownPosition = UDim2.new(0.5, -320, 0.5, -218)
+local hiddenPosition = UDim2.new(0.5, -340, 0.5, -184)
+local shownPosition = UDim2.new(0.5, -340, 0.5, -208)
 
 local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
 if oldGui then
@@ -158,14 +158,14 @@ screenGui.Parent = playerGui
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.new(0, 640, 0, 424)
+main.Size = UDim2.new(0, 680, 0, 416)
 main.Position = hiddenPosition
 main.BackgroundColor3 = colors.window
 main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 main.Parent = screenGui
-corner(main, 16)
+corner(main, 18)
 stroke(main, Color3.fromRGB(70, 84, 116), 0.22, 1)
 
 local scale = Instance.new("UIScale")
@@ -174,7 +174,7 @@ scale.Parent = main
 
 local top = Instance.new("Frame")
 top.Name = "TopBar"
-top.Size = UDim2.new(1, 0, 0, 64)
+top.Size = UDim2.new(1, 0, 0, 62)
 top.BackgroundColor3 = colors.top
 top.BorderSizePixel = 0
 top.Parent = main
@@ -197,16 +197,16 @@ accentLine.Parent = top
 
 local title = label(top, "Title", "Brainrot Hub", 19, colors.title, Enum.Font.GothamBold)
 title.Size = UDim2.new(0, 260, 0, 24)
-title.Position = UDim2.new(0, 18, 0, 12)
+title.Position = UDim2.new(0, 20, 0, 11)
 
 local subtitle = label(top, "Subtitle", "F1 toggles the menu", 12, colors.muted, Enum.Font.GothamMedium)
 subtitle.Size = UDim2.new(0, 280, 0, 18)
-subtitle.Position = UDim2.new(0, 18, 0, 38)
+subtitle.Position = UDim2.new(0, 20, 0, 37)
 
 local supportBadge = Instance.new("TextLabel")
 supportBadge.Name = "SupportBadge"
 supportBadge.Size = UDim2.new(0, 128, 0, 30)
-supportBadge.Position = UDim2.new(1, -146, 0, 17)
+supportBadge.Position = UDim2.new(1, -148, 0, 16)
 supportBadge.BackgroundColor3 = gameSupported and Color3.fromRGB(22, 83, 61) or Color3.fromRGB(78, 36, 48)
 supportBadge.BorderSizePixel = 0
 supportBadge.Font = Enum.Font.GothamBold
@@ -214,21 +214,21 @@ supportBadge.Text = gameSupported and "SUPPORTED" or "UNSUPPORTED"
 supportBadge.TextColor3 = gameSupported and Color3.fromRGB(173, 255, 218) or Color3.fromRGB(255, 170, 188)
 supportBadge.TextSize = 11
 supportBadge.Parent = top
-corner(supportBadge, 5)
+corner(supportBadge, 10)
 
 local side = Instance.new("Frame")
 side.Name = "Sidebar"
-side.Size = UDim2.new(0, 154, 1, -64)
-side.Position = UDim2.new(0, 0, 0, 64)
+side.Size = UDim2.new(0, 148, 1, -62)
+side.Position = UDim2.new(0, 0, 0, 62)
 side.BackgroundColor3 = colors.side
 side.BorderSizePixel = 0
 side.Parent = main
-padding(side, 14, 14, 14, 14)
+padding(side, 0, 0, 0, 0)
 
 local sideLine = Instance.new("Frame")
 sideLine.Name = "Divider"
 sideLine.Size = UDim2.new(0, 1, 1, 0)
-sideLine.Position = UDim2.new(0, 153, 0, 64)
+sideLine.Position = UDim2.new(0, 147, 0, 62)
 sideLine.BackgroundColor3 = colors.lineSoft
 sideLine.BorderSizePixel = 0
 sideLine.Parent = main
@@ -236,7 +236,7 @@ sideLine.Parent = main
 local tabHolder = Instance.new("Frame")
 tabHolder.Name = "Tabs"
 tabHolder.Size = UDim2.new(1, -28, 1, -28)
-tabHolder.Position = UDim2.new(0, 14, 0, 14)
+tabHolder.Position = UDim2.new(0, 14, 0, 18)
 tabHolder.BackgroundTransparency = 1
 tabHolder.Parent = side
 
@@ -247,11 +247,11 @@ tabLayout.Parent = tabHolder
 
 local content = Instance.new("Frame")
 content.Name = "Content"
-content.Size = UDim2.new(1, -154, 1, -64)
-content.Position = UDim2.new(0, 154, 0, 64)
+content.Size = UDim2.new(1, -148, 1, -62)
+content.Position = UDim2.new(0, 148, 0, 62)
 content.BackgroundTransparency = 1
 content.Parent = main
-padding(content, 16, 16, 14, 16)
+padding(content, 18, 18, 16, 18)
 
 local pages = {}
 local tabs = {}
@@ -272,6 +272,7 @@ local function makePage(name)
 	page.ScrollingDirection = Enum.ScrollingDirection.Y
 	page.Visible = false
 	page.Parent = content
+	padding(page, 2, 14, 2, 20)
 	pages[name] = page
 	return page
 end
@@ -309,7 +310,7 @@ local function makeTab(name, order)
 	button.TextXAlignment = Enum.TextXAlignment.Left
 	button.LayoutOrder = order
 	button.Parent = tabHolder
-	corner(button, 5)
+	corner(button, 10)
 	padding(button, 12, 12, 0, 0)
 
 	button.MouseEnter:Connect(function()
@@ -339,7 +340,7 @@ local function makePanel(parent, size, position)
 	panel.BackgroundColor3 = colors.panel
 	panel.BorderSizePixel = 0
 	panel.Parent = parent
-	corner(panel, 6)
+	corner(panel, 12)
 	stroke(panel, colors.lineSoft, 0.15, 1)
 	return panel
 end
@@ -403,7 +404,7 @@ avatar.BackgroundColor3 = colors.panelAlt
 avatar.BorderSizePixel = 0
 avatar.Image = ""
 avatar.Parent = profilePanel
-corner(avatar, 6)
+corner(avatar, 12)
 
 task.spawn(function()
 	local ok, image = pcall(function()
@@ -520,7 +521,7 @@ if gameSupported then
 			button.AutoButtonColor = false
 			button.Text = ""
 			button.Parent = actionsHolder
-			corner(button, 6)
+			corner(button, 12)
 			stroke(button, colors.lineSoft, 0.15, 1)
 
 			local actionTitle = label(button, "ActionTitle", action.title or "Game Action", 14, colors.title, Enum.Font.GothamBold)
@@ -563,7 +564,7 @@ toast.BackgroundColor3 = Color3.fromRGB(20, 25, 37)
 toast.BackgroundTransparency = 1
 toast.BorderSizePixel = 0
 toast.Parent = main
-corner(toast, 8)
+	corner(toast, 12)
 stroke(toast, colors.lineSoft, 1, 1)
 
 local toastTitle = label(toast, "ToastTitle", "Welcome to Brainrot Hub", 13, colors.title, Enum.Font.GothamBold)
