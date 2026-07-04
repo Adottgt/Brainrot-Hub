@@ -39,7 +39,80 @@ local SupportedGames = {
 				title = "Toggle Mythical Farm",
 				description = "Moves to the farm spot and buys when mythical brainrots spawn.",
 				callback = function()
-					print("Farm toggled")
+					local env = getgenv and getgenv() or _G
+					env.brainrotHubFarming = not env.brainrotHubFarming
+
+					if not env.brainrotHubFarming then
+						if notify then notify("Farm stopped", "Mythical farm disabled.", colors.yellow) end
+						return
+					end
+
+					if notify then notify("Farm started", "Looking for mythical brainrots.", colors.green) end
+
+					local plr = game:GetService("Players").LocalPlayer
+					local replicatedStorage = game:GetService("ReplicatedStorage")
+					local packages = replicatedStorage:FindFirstChild("Packages")
+					local netFolder = packages
+						and packages:FindFirstChild("_Index")
+						and packages._Index:FindFirstChild("sleitnick_net@0.2.0")
+						and packages._Index["sleitnick_net@0.2.0"]:FindFirstChild("net")
+					local buyRemote = netFolder and netFolder:FindFirstChild("RF/Buy NeuronBase")
+
+					if not buyRemote then
+						env.brainrotHubFarming = false
+						if notify then notify("Farm error", "Buy remote was not found.", colors.red) end
+						return
+					end
+
+					task.spawn(function()
+						while env.brainrotHubFarming do
+							local character = plr.Character or plr.CharacterAdded:Wait()
+							if character then
+								character:MoveTo(Vector3.new(12378, 1498, 231))
+							end
+
+							local spawner = workspace:FindFirstChild("BG_BrainrotSpawner")
+							if spawner then
+								for _, spawnFolder in ipairs(spawner:GetChildren()) do
+									if not env.brainrotHubFarming then
+										break
+									end
+
+									local brainrot = spawnFolder:FindFirstChildOfClass("Model")
+									if spawnFolder.Name == "Mythical" and brainrot and brainrot.PrimaryPart then
+										local prompt = brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
+										local waited = 0
+
+										while env.brainrotHubFarming and not prompt and waited < 3 do
+											task.wait(0.1)
+											waited = waited + 0.1
+											prompt = brainrot.PrimaryPart and brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
+										end
+
+										if env.brainrotHubFarming then
+											local ok, err = pcall(function()
+												if buyRemote:IsA("RemoteFunction") then
+													buyRemote:InvokeServer()
+												else
+													buyRemote:FireServer()
+												end
+											end)
+
+											if not ok and notify then
+												notify("Farm remote failed", tostring(err), colors.red)
+											end
+
+											task.wait(1)
+										end
+									end
+								end
+							elseif notify then
+								notify("Farm waiting", "Spawner folder not found yet.", colors.yellow)
+							end
+
+							task.wait(0.1)
+						end
+					end)
 				end,
 			},
 		},
@@ -379,7 +452,7 @@ local title = label(header, "Title", "Brainrot Hub", 19, colors.text, Enum.Font.
 title.Size = UDim2.new(0, 260, 0, 24)
 title.Position = UDim2.new(0, 18, 0, 11)
 
-local subtitle = label(header, "Subtitle", "the BEST brainrot script for slop ahh games, fake it till you make it", 12, colors.muted, Enum.Font.GothamMedium)
+local subtitle = label(header, "Subtitle", "the BEST brainrot script for slop ahh games", 12, colors.muted, Enum.Font.GothamMedium)
 subtitle.Size = UDim2.new(0, 340, 0, 18)
 subtitle.Position = UDim2.new(0, 18, 0, 37)
 
