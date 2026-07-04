@@ -37,93 +37,136 @@ local SupportedGames = {
 		actions = {
 			{
 				title = "Toggle Mythical Farm",
-				description = "Moves to the farm spot and buys when mythical brainrots spawn.",
+				description = "Teleports to Mythical, collects brainrots, returns to base.",
 				callback = function()
+
 					local env = getgenv and getgenv() or _G
 					env.brainrotHubFarming = not env.brainrotHubFarming
 
 					if not env.brainrotHubFarming then
-						if notify then notify("Farm stopped", "Mythical farm disabled.", colors.yellow) end
+						if notify then
+							notify("Farm stopped", "Mythical farm disabled.", colors.yellow)
+						end
 						return
 					end
 
-					if notify then notify("Farm started", "Looking for mythical brainrots.", colors.green) end
-
-					local plr = game:GetService("Players").LocalPlayer
-					local replicatedStorage = game:GetService("ReplicatedStorage")
-					local packages = replicatedStorage:FindFirstChild("Packages")
-					local netFolder = packages
-						and packages:FindFirstChild("_Index")
-						and packages._Index:FindFirstChild("sleitnick_net@0.2.0")
-						and packages._Index["sleitnick_net@0.2.0"]:FindFirstChild("net")
-					local buyRemote = netFolder and netFolder:FindFirstChild("RF/Buy NeuronBase")
-
-					if not buyRemote then
-						env.brainrotHubFarming = false
-						if notify then notify("Farm error", "Buy remote was not found.", colors.red) end
-						return
+					if notify then
+						notify("Farm started", "Running Mythical farm...", colors.green)
 					end
 
+					local Players = game:GetService("Players")
+					local plr = Players.LocalPlayer
+
+					------------------------------------------------
+					-- FIND ZONE
+					------------------------------------------------
+					local function findZone(name)
+						for _, obj in ipairs(workspace:GetDescendants()) do
+							if obj.Name == name then
+								if obj:IsA("BasePart") then
+									return obj
+								elseif obj:IsA("Model") then
+									return obj:FindFirstChildWhichIsA("BasePart", true)
+								end
+							end
+						end
+					end
+
+					------------------------------------------------
+					-- TELEPORT (FAST + NO LAG)
+					------------------------------------------------
+					local function teleport(part)
+						if not part then return end
+
+						local char = plr.Character or plr.CharacterAdded:Wait()
+						local root = char:WaitForChild("HumanoidRootPart")
+						local hum = char:FindFirstChildOfClass("Humanoid")
+
+						if hum then
+							hum:ChangeState(Enum.HumanoidStateType.Physics)
+						end
+
+						root.AssemblyLinearVelocity = Vector3.zero
+						root.AssemblyAngularVelocity = Vector3.zero
+						root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+
+						task.wait(0.03)
+
+						if hum then
+							hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+						end
+					end
+
+					------------------------------------------------
+					-- FILTER PROMPTS (NO SHOP / ROBUX)
+					------------------------------------------------
+					local function isValidPrompt(prompt)
+						local parent = prompt.Parent
+						if not parent or not parent:IsA("BasePart") then return false end
+
+						local bad = {
+							"shop", "buy", "store", "purchase", "robux", "gamepass"
+						}
+
+						for _, v in ipairs(bad) do
+							if string.find(string.lower(parent.Name), v) then
+								return false
+							end
+						end
+
+						local myth = findZone("Mythical")
+						if myth and (parent.Position - myth.Position).Magnitude < 250 then
+							return true
+						end
+
+						return false
+					end
+
+					------------------------------------------------
+					-- COLLECT (FAST + CLEAN)
+					------------------------------------------------
+					local function collect()
+						for _, obj in ipairs(workspace:GetDescendants()) do
+							if env.brainrotHubFarming and obj:IsA("ProximityPrompt") then
+								if isValidPrompt(obj) then
+									fireproximityprompt(obj)
+								end
+							end
+						end
+					end
+
+					------------------------------------------------
+					-- MAIN LOOP
+					------------------------------------------------
 					task.spawn(function()
 						while env.brainrotHubFarming do
-							local character = plr.Character or plr.CharacterAdded:Wait()
-							if character then
-								character:MoveTo(Vector3.new(12378, 1498, 231))
+
+							local myth = findZone("Mythical")
+							local base = findZone("Base")
+
+							if myth then
+								teleport(myth)
+								task.wait(0.1)
+
+								collect()
+
+								teleport(base)
 							end
 
-							local spawner = workspace:FindFirstChild("BG_BrainrotSpawner")
-							if spawner then
-								for _, spawnFolder in ipairs(spawner:GetChildren()) do
-									if not env.brainrotHubFarming then
-										break
-									end
-
-									local brainrot = spawnFolder:FindFirstChildOfClass("Model")
-									if spawnFolder.Name == "Mythical" and brainrot and brainrot.PrimaryPart then
-										local prompt = brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
-										local waited = 0
-
-										while env.brainrotHubFarming and not prompt and waited < 3 do
-											task.wait(0.1)
-											waited = waited + 0.1
-											prompt = brainrot.PrimaryPart and brainrot.PrimaryPart:FindFirstChildOfClass("ProximityPrompt")
-										end
-
-										if env.brainrotHubFarming then
-											local ok, err = pcall(function()
-												if buyRemote:IsA("RemoteFunction") then
-													buyRemote:InvokeServer()
-												else
-													buyRemote:FireServer()
-												end
-											end)
-
-											if not ok and notify then
-												notify("Farm remote failed", tostring(err), colors.red)
-											end
-
-											task.wait(1)
-										end
-									end
-								end
-							elseif notify then
-								notify("Farm waiting", "Spawner folder not found yet.", colors.yellow)
-							end
-
-							task.wait(0.1)
+							task.wait(0.4)
 						end
 					end)
 				end,
 			},
 		},
 	},
+}
 	-- [114640202062357] = {
 	-- 	name = "Swing Obby for Brainrots",
 	-- 	actions = {
 	-- 		{ title = "Example Action", description = "Runs code.", callback = function() print("Example") end },
 	-- 	},
 	-- },
-}
 
 local colors = {
 	bg = Color3.fromRGB(8, 10, 16),
@@ -1239,5 +1282,3 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 end)
-
-print ("Everything is up to date -terminal . ok shut the fuck up")
