@@ -10,7 +10,7 @@ local TOGGLE_KEY = Enum.KeyCode.F1
 local GAME_FOLDER = "FUCKASS GAMES"
 
 local Updates = {
-	{ title = "UI Built", body = "Sharper layout, cleaner tabs, profile card, and better spacing." },
+	{ title = "UI Built", body = "Better layout, cleaner tabs, profile card, and better spacing." },
 	{ title = "Game detection", body = "Brainrot Hub checks this PlaceId against built-in or folder configs." },
 	{ title = "Supported games", body = "The Game tab only appears when a matching game config is found." },
 }
@@ -45,8 +45,6 @@ local colors = {
 
 local hiddenPosition = UDim2.new(0.5, -320, 0.5, -194)
 local shownPosition = UDim2.new(0.5, -320, 0.5, -218)
-local hiddenShadowPosition = UDim2.new(0.5, -316, 0.5, -184)
-local shownShadowPosition = UDim2.new(0.5, -316, 0.5, -208)
 
 local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
 if oldGui then
@@ -158,16 +156,6 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
-local shadow = Instance.new("Frame")
-shadow.Name = "Shadow"
-shadow.Size = UDim2.new(0, 650, 0, 434)
-shadow.Position = hiddenShadowPosition
-shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-shadow.BackgroundTransparency = 1
-shadow.BorderSizePixel = 0
-shadow.Parent = screenGui
-corner(shadow, 14)
-
 local main = Instance.new("Frame")
 main.Name = "Main"
 main.Size = UDim2.new(0, 640, 0, 424)
@@ -177,11 +165,11 @@ main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 main.Parent = screenGui
-corner(main, 12)
-stroke(main, colors.line, 0.08, 1)
+corner(main, 16)
+stroke(main, Color3.fromRGB(70, 84, 116), 0.22, 1)
 
 local scale = Instance.new("UIScale")
-scale.Scale = 0.96
+scale.Scale = 1
 scale.Parent = main
 
 local top = Instance.new("Frame")
@@ -240,15 +228,22 @@ padding(side, 14, 14, 14, 14)
 local sideLine = Instance.new("Frame")
 sideLine.Name = "Divider"
 sideLine.Size = UDim2.new(0, 1, 1, 0)
-sideLine.Position = UDim2.new(1, -1, 0, 0)
+sideLine.Position = UDim2.new(0, 153, 0, 64)
 sideLine.BackgroundColor3 = colors.lineSoft
 sideLine.BorderSizePixel = 0
-sideLine.Parent = side
+sideLine.Parent = main
+
+local tabHolder = Instance.new("Frame")
+tabHolder.Name = "Tabs"
+tabHolder.Size = UDim2.new(1, -28, 1, -28)
+tabHolder.Position = UDim2.new(0, 14, 0, 14)
+tabHolder.BackgroundTransparency = 1
+tabHolder.Parent = side
 
 local tabLayout = Instance.new("UIListLayout")
 tabLayout.Padding = UDim.new(0, 8)
 tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabLayout.Parent = side
+tabLayout.Parent = tabHolder
 
 local content = Instance.new("Frame")
 content.Name = "Content"
@@ -263,11 +258,18 @@ local tabs = {}
 local selectedTab
 
 local function makePage(name)
-	local page = Instance.new("Frame")
+	local page = Instance.new("ScrollingFrame")
 	page.Name = name .. "Page"
 	page.Size = UDim2.new(1, 0, 1, 0)
 	page.Position = UDim2.new(0, 0, 0, 8)
 	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 4
+	page.ScrollBarImageColor3 = colors.blue
+	page.ScrollBarImageTransparency = 0.25
+	page.CanvasSize = UDim2.new(0, 0, 0, 0)
+	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.ScrollingDirection = Enum.ScrollingDirection.Y
 	page.Visible = false
 	page.Parent = content
 	pages[name] = page
@@ -306,7 +308,7 @@ local function makeTab(name, order)
 	button.TextSize = 13
 	button.TextXAlignment = Enum.TextXAlignment.Left
 	button.LayoutOrder = order
-	button.Parent = side
+	button.Parent = tabHolder
 	corner(button, 5)
 	padding(button, 12, 12, 0, 0)
 
@@ -594,21 +596,17 @@ local function showUi()
 	screenGui.Enabled = true
 	uiOpen = true
 	main.Position = hiddenPosition
-	shadow.Position = hiddenShadowPosition
 	main.BackgroundTransparency = 1
-	shadow.BackgroundTransparency = 1
-	scale.Scale = 0.96
-	tweenWithStyle(main, { Position = shownPosition, BackgroundTransparency = 0 }, 0.32, Enum.EasingStyle.Back)
-	tweenWithStyle(shadow, { Position = shownShadowPosition, BackgroundTransparency = 0.72 }, 0.32, Enum.EasingStyle.Quart)
-	tweenWithStyle(scale, { Scale = 1 }, 0.32, Enum.EasingStyle.Back)
+	scale.Scale = 0.985
+	tweenWithStyle(main, { Position = shownPosition, BackgroundTransparency = 0 }, 0.22, Enum.EasingStyle.Quart)
+	tweenWithStyle(scale, { Scale = 1 }, 0.22, Enum.EasingStyle.Quart)
 end
 
 local function hideUi()
 	uiOpen = false
-	tweenWithStyle(main, { Position = hiddenPosition, BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	tweenWithStyle(shadow, { Position = hiddenShadowPosition, BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	tweenWithStyle(scale, { Scale = 0.96 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	task.delay(0.23, function()
+	tweenWithStyle(main, { Position = hiddenPosition, BackgroundTransparency = 1 }, 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	tweenWithStyle(scale, { Scale = 0.985 }, 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	task.delay(0.19, function()
 		if not uiOpen then
 			screenGui.Enabled = false
 		end
@@ -621,12 +619,10 @@ task.delay(0.45, showToast)
 local dragging = false
 local dragStart
 local mainStart
-local shadowStart
 
 local function updateDrag(input)
 	local delta = input.Position - dragStart
 	main.Position = UDim2.new(mainStart.X.Scale, mainStart.X.Offset + delta.X, mainStart.Y.Scale, mainStart.Y.Offset + delta.Y)
-	shadow.Position = UDim2.new(shadowStart.X.Scale, shadowStart.X.Offset + delta.X, shadowStart.Y.Scale, shadowStart.Y.Offset + delta.Y)
 end
 
 top.InputBegan:Connect(function(input)
@@ -637,7 +633,6 @@ top.InputBegan:Connect(function(input)
 	dragging = true
 	dragStart = input.Position
 	mainStart = main.Position
-	shadowStart = shadow.Position
 
 	input.Changed:Connect(function()
 		if input.UserInputState == Enum.UserInputState.End then
