@@ -1239,3 +1239,5 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 end)
+
+print ("Everything is up to date -terminal . ok shut the fuck up")
