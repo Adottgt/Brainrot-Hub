@@ -3,9 +3,6 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TeleportService = game:GetService("TeleportService")
-local SupportedGameList = {
-	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "test supported script" },
-}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -13,57 +10,39 @@ local playerGui = player:WaitForChild("PlayerGui")
 local TOGGLE_KEY = Enum.KeyCode.F1
 local GAME_FOLDER = "FUCKASS GAMES"
 
+local SupportedGameList = {
+	{ placeId = 114640202062357, name = "Swing Obby for Brainrots", description = "Test supported script." },
+}
+
 local Updates = {
-	{ title = "UI Built", body = "Better layout, cleaner tabs, profile card, and better spacing." },
-	{ title = "Game detection", body = "Brainrot Hub checks this PlaceId against built-in or folder configs." },
-	{ title = "Supported games", body = "The Game tab only appears when a matching game config is found." },
+	{ title = "UI rebuilt", body = "Clean rounded shell, smoother spacing, and scrollable pages." },
+	{ title = "Supported games", body = "Unsupported games now show places you can join." },
+	{ title = "Game detection", body = "Configs can come from built-in entries or PlaceId files." },
 }
 
 local SupportedGames = {
-	-- Built-in support example:
-	-- [game.PlaceId] = {
-	-- 	name = "Current Game",
+	-- [114640202062357] = {
+	-- 	name = "Swing Obby for Brainrots",
 	-- 	actions = {
-	-- 		{ title = "Example", description = "Runs code.", callback = function() print("Example") end },
+	-- 		{ title = "Example Action", description = "Runs code.", callback = function() print("Example") end },
 	-- 	},
 	-- },
 }
 
-local SupportedGameList = {
-	-- Put supported games here so unsupported users can teleport to them:
-	-- { placeId = 123456789, name = "Supported Game", description = "Short description of this script." },
-}
-
 local colors = {
-	window = Color3.fromRGB(10, 12, 18),
-	top = Color3.fromRGB(16, 19, 29),
-	side = Color3.fromRGB(13, 16, 24),
-	panel = Color3.fromRGB(19, 23, 34),
-	panelAlt = Color3.fromRGB(24, 30, 44),
-	line = Color3.fromRGB(52, 62, 86),
-	lineSoft = Color3.fromRGB(35, 42, 59),
-	title = Color3.fromRGB(246, 248, 255),
-	text = Color3.fromRGB(204, 211, 230),
-	muted = Color3.fromRGB(132, 143, 168),
-	blue = Color3.fromRGB(74, 122, 255),
-	cyan = Color3.fromRGB(64, 206, 230),
-	green = Color3.fromRGB(57, 210, 143),
-	red = Color3.fromRGB(238, 86, 111),
-	yellow = Color3.fromRGB(239, 189, 82),
+	bg = Color3.fromRGB(8, 10, 16),
+	surface = Color3.fromRGB(14, 18, 28),
+	surface2 = Color3.fromRGB(19, 24, 36),
+	surface3 = Color3.fromRGB(25, 31, 46),
+	line = Color3.fromRGB(48, 59, 84),
+	text = Color3.fromRGB(235, 240, 255),
+	muted = Color3.fromRGB(145, 156, 184),
+	blue = Color3.fromRGB(79, 126, 255),
+	cyan = Color3.fromRGB(67, 214, 231),
+	green = Color3.fromRGB(74, 221, 151),
+	red = Color3.fromRGB(255, 93, 127),
+	yellow = Color3.fromRGB(242, 194, 88),
 }
-
-local hiddenPosition = UDim2.new(0.5, -360, 0.5, -202)
-local shownPosition = UDim2.new(0.5, -360, 0.5, -226)
-
-local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
-if oldGui then
-	oldGui:Destroy()
-end
-
-local legacyGui = playerGui:FindFirstChild("SimpleGui")
-if legacyGui then
-	legacyGui:Destroy()
-end
 
 local function corner(parent, radius)
 	local item = Instance.new("UICorner")
@@ -91,6 +70,17 @@ local function padding(parent, left, right, top, bottom)
 	return item
 end
 
+local function gradient(parent, topColor, bottomColor)
+	local item = Instance.new("UIGradient")
+	item.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, topColor),
+		ColorSequenceKeypoint.new(1, bottomColor),
+	})
+	item.Rotation = 90
+	item.Parent = parent
+	return item
+end
+
 local function label(parent, name, text, size, color, font)
 	local item = Instance.new("TextLabel")
 	item.Name = name
@@ -106,15 +96,18 @@ local function label(parent, name, text, size, color, font)
 	return item
 end
 
-local function tween(item, props, time)
-	TweenService:Create(item, TweenInfo.new(time or 0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
-end
-
-local function tweenWithStyle(item, props, time, style, direction)
-	local info = TweenInfo.new(time or 0.2, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out)
+local function tween(item, props, time, style, direction)
+	local info = TweenInfo.new(time or 0.18, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out)
 	local activeTween = TweenService:Create(item, info, props)
 	activeTween:Play()
 	return activeTween
+end
+
+local function getExperienceName(placeId)
+	local ok, info = pcall(function()
+		return MarketplaceService:GetProductInfo(placeId or game.PlaceId)
+	end)
+	return ok and info and info.Name or "Current Experience"
 end
 
 local function tryLoadGameFile(placeId)
@@ -122,33 +115,22 @@ local function tryLoadGameFile(placeId)
 		return nil
 	end
 
-	local paths = {
+	for _, path in ipairs({
 		GAME_FOLDER .. "/" .. tostring(placeId) .. ".lua",
 		"fuckass-script/games/" .. tostring(placeId) .. ".lua",
-	}
-
-	for _, path in ipairs(paths) do
+	}) do
 		if isfile(path) then
 			local ok, result = pcall(function()
 				return loadstring(readfile(path))()
 			end)
-
 			if ok and type(result) == "table" then
 				return result, path
 			end
-
 			warn("Failed to load game file:", path, result)
 		end
 	end
 
 	return nil
-end
-
-local function getExperienceName()
-	local ok, info = pcall(function()
-		return MarketplaceService:GetProductInfo(game.PlaceId)
-	end)
-	return ok and info and info.Name or "Current Experience"
 end
 
 local function buildSupportedGameList()
@@ -167,9 +149,31 @@ local function buildSupportedGameList()
 			seen[placeId] = true
 			table.insert(list, {
 				placeId = placeId,
-				name = type(config) == "table" and config.name or "Supported Game",
-				description = "Built into this hub.",
+				name = type(config) == "table" and config.name or ("Place " .. tostring(placeId)),
+				description = "Built into Brainrot Hub.",
 			})
+		end
+	end
+
+	if type(listfiles) == "function" then
+		for _, folder in ipairs({ GAME_FOLDER, "fuckass-script/games" }) do
+			local ok, files = pcall(function()
+				return listfiles(folder)
+			end)
+			if ok and type(files) == "table" then
+				for _, path in ipairs(files) do
+					local placeIdText = tostring(path):match("([%d]+)%.lua$")
+					local placeId = tonumber(placeIdText)
+					if placeId and not seen[placeId] then
+						seen[placeId] = true
+						table.insert(list, {
+							placeId = placeId,
+							name = "Place " .. placeIdText,
+							description = "Detected from " .. folder .. ".",
+						})
+					end
+				end
+			end
 		end
 	end
 
@@ -180,14 +184,20 @@ local function buildSupportedGameList()
 	return list
 end
 
+local oldGui = playerGui:FindFirstChild("BrainrotHubGui")
+if oldGui then oldGui:Destroy() end
+
+local legacyGui = playerGui:FindFirstChild("SimpleGui")
+if legacyGui then legacyGui:Destroy() end
+
 local gameConfig, loadedPath = SupportedGames[game.PlaceId], "Built-in table"
 if not gameConfig then
 	gameConfig, loadedPath = tryLoadGameFile(game.PlaceId)
 end
 
 local gameSupported = type(gameConfig) == "table"
-local gameName = gameSupported and (gameConfig.name or getExperienceName()) or getExperienceName()
-local supportedGameList = buildSupportedGameList()
+local gameName = gameSupported and (gameConfig.name or getExperienceName(game.PlaceId)) or getExperienceName(game.PlaceId)
+local supportedGames = buildSupportedGameList()
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BrainrotHubGui"
@@ -197,100 +207,88 @@ screenGui.Parent = playerGui
 
 local main = Instance.new("Frame")
 main.Name = "Main"
-main.Size = UDim2.new(0, 720, 0, 452)
-main.Position = hiddenPosition
-main.BackgroundColor3 = colors.window
+main.Size = UDim2.new(0, 720, 0, 460)
+main.Position = UDim2.new(0.5, -360, 0.5, -230)
+main.BackgroundColor3 = colors.bg
 main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 main.Parent = screenGui
-corner(main, 18)
-stroke(main, Color3.fromRGB(70, 84, 116), 0.22, 1)
+corner(main, 22)
+stroke(main, Color3.fromRGB(72, 88, 126), 0.22, 1)
+gradient(main, Color3.fromRGB(15, 18, 28), Color3.fromRGB(7, 9, 15))
 
 local scale = Instance.new("UIScale")
-scale.Scale = 1
+scale.Scale = 0.985
 scale.Parent = main
 
-local top = Instance.new("Frame")
-top.Name = "TopBar"
-top.Size = UDim2.new(1, 0, 0, 62)
-top.BackgroundColor3 = colors.top
-top.BorderSizePixel = 0
-top.Parent = main
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, -28, 0, 64)
+header.Position = UDim2.new(0, 14, 0, 14)
+header.BackgroundColor3 = colors.surface
+header.BorderSizePixel = 0
+header.Parent = main
+corner(header, 18)
+stroke(header, colors.line, 0.38, 1)
+gradient(header, Color3.fromRGB(20, 25, 38), Color3.fromRGB(13, 16, 25))
 
-local topGradient = Instance.new("UIGradient")
-topGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 25, 38)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 23)),
-})
-topGradient.Rotation = 0
-topGradient.Parent = top
-
-local accentLine = Instance.new("Frame")
-accentLine.Name = "AccentLine"
-accentLine.Size = UDim2.new(1, 0, 0, 1)
-accentLine.Position = UDim2.new(0, 0, 1, -1)
-accentLine.BackgroundColor3 = colors.lineSoft
-accentLine.BorderSizePixel = 0
-accentLine.Parent = top
-
-local title = label(top, "Title", "Brainrot Hub", 19, colors.title, Enum.Font.GothamBold)
+local title = label(header, "Title", "Brainrot Hub", 19, colors.text, Enum.Font.GothamBold)
 title.Size = UDim2.new(0, 260, 0, 24)
-title.Position = UDim2.new(0, 20, 0, 11)
+title.Position = UDim2.new(0, 18, 0, 11)
 
-local subtitle = label(top, "Subtitle", "the BEST brainrot hub script for slop games, fake it till you make it", 12, colors.muted, Enum.Font.GothamMedium)
-subtitle.Size = UDim2.new(0, 280, 0, 18)
-subtitle.Position = UDim2.new(0, 20, 0, 37)
+local subtitle = label(header, "Subtitle", "F1 toggles the menu", 12, colors.muted, Enum.Font.GothamMedium)
+subtitle.Size = UDim2.new(0, 340, 0, 18)
+subtitle.Position = UDim2.new(0, 18, 0, 37)
 
 local supportBadge = Instance.new("TextLabel")
 supportBadge.Name = "SupportBadge"
-supportBadge.Size = UDim2.new(0, 128, 0, 30)
-supportBadge.Position = UDim2.new(1, -148, 0, 16)
-supportBadge.BackgroundColor3 = gameSupported and Color3.fromRGB(22, 83, 61) or Color3.fromRGB(78, 36, 48)
+supportBadge.Size = UDim2.new(0, 132, 0, 32)
+supportBadge.Position = UDim2.new(1, -150, 0.5, -16)
+supportBadge.BackgroundColor3 = gameSupported and Color3.fromRGB(24, 86, 63) or Color3.fromRGB(88, 39, 55)
 supportBadge.BorderSizePixel = 0
 supportBadge.Font = Enum.Font.GothamBold
 supportBadge.Text = gameSupported and "SUPPORTED" or "UNSUPPORTED"
-supportBadge.TextColor3 = gameSupported and Color3.fromRGB(173, 255, 218) or Color3.fromRGB(255, 170, 188)
+supportBadge.TextColor3 = gameSupported and Color3.fromRGB(179, 255, 223) or Color3.fromRGB(255, 177, 194)
 supportBadge.TextSize = 11
-supportBadge.Parent = top
-corner(supportBadge, 10)
+supportBadge.Parent = header
+corner(supportBadge, 14)
 
-local side = Instance.new("Frame")
-side.Name = "Sidebar"
-side.Size = UDim2.new(0, 148, 1, -62)
-side.Position = UDim2.new(0, 0, 0, 62)
-side.BackgroundColor3 = colors.side
-side.BorderSizePixel = 0
-side.Parent = main
-padding(side, 0, 0, 0, 0)
+local body = Instance.new("Frame")
+body.Name = "Body"
+body.Size = UDim2.new(1, -28, 1, -100)
+body.Position = UDim2.new(0, 14, 0, 86)
+body.BackgroundTransparency = 1
+body.Parent = main
 
-local sideLine = Instance.new("Frame")
-sideLine.Name = "Divider"
-sideLine.Size = UDim2.new(0, 1, 1, 0)
-sideLine.Position = UDim2.new(0, 147, 0, 62)
-sideLine.BackgroundColor3 = colors.lineSoft
-sideLine.BorderSizePixel = 0
-sideLine.Parent = main
-
-local tabHolder = Instance.new("Frame")
-tabHolder.Name = "Tabs"
-tabHolder.Size = UDim2.new(1, -28, 1, -28)
-tabHolder.Position = UDim2.new(0, 14, 0, 18)
-tabHolder.BackgroundTransparency = 1
-tabHolder.Parent = side
+local sidebar = Instance.new("Frame")
+sidebar.Name = "Sidebar"
+sidebar.Size = UDim2.new(0, 150, 1, 0)
+sidebar.BackgroundColor3 = colors.surface
+sidebar.BorderSizePixel = 0
+sidebar.Parent = body
+corner(sidebar, 18)
+stroke(sidebar, colors.line, 0.5, 1)
+gradient(sidebar, Color3.fromRGB(16, 20, 31), Color3.fromRGB(10, 13, 20))
+padding(sidebar, 14, 14, 14, 14)
 
 local tabLayout = Instance.new("UIListLayout")
-tabLayout.Padding = UDim.new(0, 8)
+tabLayout.Padding = UDim.new(0, 10)
 tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabLayout.Parent = tabHolder
+tabLayout.Parent = sidebar
 
-local content = Instance.new("Frame")
-content.Name = "Content"
-content.Size = UDim2.new(1, -148, 1, -62)
-content.Position = UDim2.new(0, 148, 0, 62)
-content.BackgroundTransparency = 1
-content.Parent = main
-padding(content, 18, 18, 16, 18)
+local contentShell = Instance.new("Frame")
+contentShell.Name = "ContentShell"
+contentShell.Size = UDim2.new(1, -166, 1, 0)
+contentShell.Position = UDim2.new(0, 166, 0, 0)
+contentShell.BackgroundColor3 = colors.surface
+contentShell.BorderSizePixel = 0
+contentShell.ClipsDescendants = true
+contentShell.Parent = body
+corner(contentShell, 18)
+stroke(contentShell, colors.line, 0.5, 1)
+gradient(contentShell, Color3.fromRGB(15, 19, 29), Color3.fromRGB(9, 12, 18))
+padding(contentShell, 16, 16, 16, 16)
 
 local pages = {}
 local tabs = {}
@@ -300,17 +298,16 @@ local function makePage(name)
 	local page = Instance.new("ScrollingFrame")
 	page.Name = name .. "Page"
 	page.Size = UDim2.new(1, 0, 1, 0)
-	page.Position = UDim2.new(0, 0, 0, 8)
 	page.BackgroundTransparency = 1
 	page.BorderSizePixel = 0
-	page.ScrollBarThickness = 4
+	page.ScrollBarThickness = 5
 	page.ScrollBarImageColor3 = colors.blue
-	page.ScrollBarImageTransparency = 0.25
-	page.CanvasSize = UDim2.new(0, 0, 0, 0)
-	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.ScrollBarImageTransparency = 0.18
 	page.ScrollingDirection = Enum.ScrollingDirection.Y
+	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.CanvasSize = UDim2.new(0, 0, 0, 0)
 	page.Visible = false
-	page.Parent = content
+	page.Parent = contentShell
 	padding(page, 2, 14, 2, 20)
 	pages[name] = page
 	return page
@@ -319,27 +316,23 @@ end
 local function selectTab(name)
 	selectedTab = name
 	for pageName, page in pairs(pages) do
-		local active = pageName == name
-		page.Visible = active
-		if active then
-			page.Position = UDim2.new(0, 0, 0, 8)
-			tweenWithStyle(page, { Position = UDim2.new(0, 0, 0, 0) }, 0.22, Enum.EasingStyle.Quart)
-		end
+		page.Visible = pageName == name
 	end
+
 	for tabName, button in pairs(tabs) do
 		local active = tabName == name
 		tween(button, {
-			BackgroundColor3 = active and colors.blue or Color3.fromRGB(17, 21, 31),
+			BackgroundColor3 = active and colors.blue or colors.surface2,
 			TextColor3 = active and Color3.fromRGB(255, 255, 255) or colors.text,
-		})
+		}, 0.14)
 	end
 end
 
 local function makeTab(name, order)
 	local button = Instance.new("TextButton")
 	button.Name = name .. "Tab"
-	button.Size = UDim2.new(1, 0, 0, 38)
-	button.BackgroundColor3 = Color3.fromRGB(17, 21, 31)
+	button.Size = UDim2.new(1, 0, 0, 42)
+	button.BackgroundColor3 = colors.surface2
 	button.BorderSizePixel = 0
 	button.AutoButtonColor = false
 	button.Font = Enum.Font.GothamSemibold
@@ -348,19 +341,19 @@ local function makeTab(name, order)
 	button.TextSize = 13
 	button.TextXAlignment = Enum.TextXAlignment.Left
 	button.LayoutOrder = order
-	button.Parent = tabHolder
-	corner(button, 10)
-	padding(button, 12, 12, 0, 0)
+	button.Parent = sidebar
+	corner(button, 14)
+	padding(button, 13, 13, 0, 0)
 
 	button.MouseEnter:Connect(function()
 		if selectedTab ~= name then
-			tween(button, { BackgroundColor3 = Color3.fromRGB(24, 30, 44) })
+			tween(button, { BackgroundColor3 = colors.surface3 }, 0.12)
 		end
 	end)
 
 	button.MouseLeave:Connect(function()
 		if selectedTab ~= name then
-			tween(button, { BackgroundColor3 = Color3.fromRGB(17, 21, 31) })
+			tween(button, { BackgroundColor3 = colors.surface2 }, 0.12)
 		end
 	end)
 
@@ -372,85 +365,70 @@ local function makeTab(name, order)
 	return button
 end
 
-local function makePanel(parent, size, position)
+local function makePanel(parent, height)
 	local panel = Instance.new("Frame")
-	panel.Size = size
-	panel.Position = position or UDim2.new()
-	panel.BackgroundColor3 = colors.panel
+	panel.Size = UDim2.new(1, 0, 0, height)
+	panel.BackgroundColor3 = colors.surface2
 	panel.BorderSizePixel = 0
 	panel.Parent = parent
-	corner(panel, 12)
-	stroke(panel, colors.lineSoft, 0.15, 1)
+	corner(panel, 16)
+	stroke(panel, colors.line, 0.52, 1)
+	gradient(panel, Color3.fromRGB(22, 27, 41), Color3.fromRGB(15, 19, 29))
 	return panel
 end
 
-local function addPanelGradient(panel, topColor, bottomColor)
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, topColor),
-		ColorSequenceKeypoint.new(1, bottomColor),
-	})
-	gradient.Rotation = 90
-	gradient.Parent = panel
-	return gradient
+local function addVerticalLayout(parent, paddingPixels)
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, paddingPixels or 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = parent
+	return layout
 end
 
-local function makeUpdate(parent, update, order)
-	local item = makePanel(parent, UDim2.new(1, 0, 0, 58))
-	item.LayoutOrder = order
+local function makeInfoCard(parent, titleText, valueText, valueColor)
+	local card = makePanel(parent, 78)
+	local titleLabel = label(card, "Title", titleText, 12, colors.muted, Enum.Font.GothamSemibold)
+	titleLabel.Size = UDim2.new(1, -24, 0, 18)
+	titleLabel.Position = UDim2.new(0, 12, 0, 12)
 
-	local marker = Instance.new("Frame")
-	marker.Size = UDim2.new(0, 4, 0, 34)
-	marker.Position = UDim2.new(0, 12, 0, 12)
-	marker.BackgroundColor3 = order == 1 and colors.blue or (order == 2 and colors.cyan or colors.green)
-	marker.BorderSizePixel = 0
-	marker.Parent = item
-
-	local updateTitle = label(item, "UpdateTitle", update.title, 13, colors.title, Enum.Font.GothamBold)
-	updateTitle.Size = UDim2.new(1, -38, 0, 20)
-	updateTitle.Position = UDim2.new(0, 26, 0, 9)
-
-	local updateBody = label(item, "UpdateBody", update.body, 11, colors.muted, Enum.Font.Gotham)
-	updateBody.Size = UDim2.new(1, -38, 0, 22)
-	updateBody.Position = UDim2.new(0, 26, 0, 29)
-	return item
+	local valueLabel = label(card, "Value", valueText, 15, valueColor or colors.text, Enum.Font.GothamBold)
+	valueLabel.Size = UDim2.new(1, -24, 0, 28)
+	valueLabel.Position = UDim2.new(0, 12, 0, 36)
+	return card
 end
 
 local function makeSupportedGameButton(parent, entry, order)
 	local button = Instance.new("TextButton")
-	button.Name = "SupportedGame"
-	button.Size = UDim2.new(1, 0, 0, 72)
-	button.BackgroundColor3 = colors.panel
+	button.Size = UDim2.new(1, 0, 0, 76)
+	button.BackgroundColor3 = colors.surface2
 	button.BorderSizePixel = 0
 	button.AutoButtonColor = false
 	button.Text = ""
 	button.LayoutOrder = order
 	button.Parent = parent
-	corner(button, 14)
-	stroke(button, colors.lineSoft, 0.12, 1)
-	addPanelGradient(button, Color3.fromRGB(24, 30, 45), Color3.fromRGB(17, 21, 31))
+	corner(button, 16)
+	stroke(button, colors.line, 0.45, 1)
+	gradient(button, Color3.fromRGB(24, 30, 46), Color3.fromRGB(16, 20, 31))
 
-	local glow = Instance.new("Frame")
-	glow.Name = "Accent"
-	glow.Size = UDim2.new(0, 5, 1, -24)
-	glow.Position = UDim2.new(0, 14, 0, 12)
-	glow.BackgroundColor3 = colors.blue
-	glow.BorderSizePixel = 0
-	glow.Parent = button
-	corner(glow, 5)
+	local accent = Instance.new("Frame")
+	accent.Size = UDim2.new(0, 5, 1, -26)
+	accent.Position = UDim2.new(0, 14, 0, 13)
+	accent.BackgroundColor3 = colors.blue
+	accent.BorderSizePixel = 0
+	accent.Parent = button
+	corner(accent, 5)
 
-	local gameTitle = label(button, "GameTitle", entry.name or ("Place " .. tostring(entry.placeId)), 14, colors.title, Enum.Font.GothamBold)
+	local gameTitle = label(button, "GameTitle", entry.name or ("Place " .. tostring(entry.placeId)), 14, colors.text, Enum.Font.GothamBold)
 	gameTitle.Size = UDim2.new(1, -150, 0, 22)
-	gameTitle.Position = UDim2.new(0, 30, 0, 12)
+	gameTitle.Position = UDim2.new(0, 32, 0, 13)
 
 	local gameBody = label(button, "GameBody", entry.description or "Supported by Brainrot Hub.", 11, colors.muted, Enum.Font.GothamMedium)
-	gameBody.Size = UDim2.new(1, -150, 0, 22)
-	gameBody.Position = UDim2.new(0, 30, 0, 36)
+	gameBody.Size = UDim2.new(1, -150, 0, 28)
+	gameBody.Position = UDim2.new(0, 32, 0, 36)
 
 	local join = Instance.new("TextLabel")
-	join.Name = "Join"
-	join.Size = UDim2.new(0, 92, 0, 30)
-	join.Position = UDim2.new(1, -106, 0.5, -15)
+	join.Size = UDim2.new(0, 88, 0, 32)
+	join.Position = UDim2.new(1, -104, 0.5, -16)
 	join.BackgroundColor3 = colors.blue
 	join.BorderSizePixel = 0
 	join.Font = Enum.Font.GothamBold
@@ -458,15 +436,15 @@ local function makeSupportedGameButton(parent, entry, order)
 	join.TextColor3 = Color3.fromRGB(255, 255, 255)
 	join.TextSize = 12
 	join.Parent = button
-	corner(join, 10)
+	corner(join, 14)
 
 	button.MouseEnter:Connect(function()
-		tween(button, { BackgroundColor3 = colors.panelAlt }, 0.12)
-		tween(join, { BackgroundColor3 = Color3.fromRGB(94, 143, 255) }, 0.12)
+		tween(button, { BackgroundColor3 = colors.surface3 }, 0.12)
+		tween(join, { BackgroundColor3 = Color3.fromRGB(101, 148, 255) }, 0.12)
 	end)
 
 	button.MouseLeave:Connect(function()
-		tween(button, { BackgroundColor3 = colors.panel }, 0.12)
+		tween(button, { BackgroundColor3 = colors.surface2 }, 0.12)
 		tween(join, { BackgroundColor3 = colors.blue }, 0.12)
 	end)
 
@@ -480,228 +458,163 @@ local function makeSupportedGameButton(parent, entry, order)
 end
 
 local homePage = makePage("Home")
+addVerticalLayout(homePage, 12)
 
-local welcomePanel = makePanel(homePage, UDim2.new(1, 0, 0, 70))
-welcomePanel.Position = UDim2.new(0, 0, 0, 0)
-welcomePanel.BackgroundColor3 = Color3.fromRGB(19, 25, 39)
-addPanelGradient(welcomePanel, Color3.fromRGB(25, 33, 53), Color3.fromRGB(16, 20, 31))
+local welcome = makePanel(homePage, 82)
+local welcomeTitle = label(welcome, "WelcomeTitle", "Welcome back, " .. player.DisplayName, 18, colors.text, Enum.Font.GothamBold)
+welcomeTitle.Size = UDim2.new(1, -28, 0, 26)
+welcomeTitle.Position = UDim2.new(0, 14, 0, 13)
+local welcomeBody = label(welcome, "WelcomeBody", "Thanks for using Brainrot Hub. Use the tabs to check support, updates, and game actions.", 12, colors.muted, Enum.Font.GothamMedium)
+welcomeBody.Size = UDim2.new(1, -28, 0, 30)
+welcomeBody.Position = UDim2.new(0, 14, 0, 42)
 
-local welcomeTitle = label(welcomePanel, "WelcomeTitle", "Welcome back, " .. player.DisplayName, 17, colors.title, Enum.Font.GothamBold)
-welcomeTitle.Size = UDim2.new(1, -28, 0, 24)
-welcomeTitle.Position = UDim2.new(0, 14, 0, 10)
-
-local welcomeBody = label(welcomePanel, "WelcomeBody", "Thanks for using Brainrot Hub. Pick a tab on the left and the hub will handle game support automatically.", 12, colors.text, Enum.Font.GothamMedium)
-welcomeBody.Size = UDim2.new(1, -28, 0, 28)
-welcomeBody.Position = UDim2.new(0, 14, 0, 34)
-
-local profilePanel = makePanel(homePage, UDim2.new(1, 0, 0, 92))
-profilePanel.Position = UDim2.new(0, 0, 0, 82)
-addPanelGradient(profilePanel, Color3.fromRGB(20, 25, 37), Color3.fromRGB(16, 20, 29))
-
+local profile = makePanel(homePage, 96)
 local avatar = Instance.new("ImageLabel")
-avatar.Name = "Avatar"
-avatar.Size = UDim2.new(0, 58, 0, 58)
-avatar.Position = UDim2.new(0, 16, 0, 17)
-avatar.BackgroundColor3 = colors.panelAlt
+avatar.Size = UDim2.new(0, 60, 0, 60)
+avatar.Position = UDim2.new(0, 16, 0, 18)
+avatar.BackgroundColor3 = colors.surface3
 avatar.BorderSizePixel = 0
 avatar.Image = ""
-avatar.Parent = profilePanel
-corner(avatar, 12)
+avatar.Parent = profile
+corner(avatar, 16)
 
 task.spawn(function()
 	local ok, image = pcall(function()
 		return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
 	end)
-	if ok then
-		avatar.Image = image
-	end
+	if ok then avatar.Image = image end
 end)
 
-local displayName = label(profilePanel, "DisplayName", player.DisplayName, 17, colors.title, Enum.Font.GothamBold)
-displayName.Size = UDim2.new(1, -96, 0, 24)
-displayName.Position = UDim2.new(0, 88, 0, 16)
+local displayName = label(profile, "DisplayName", player.DisplayName, 17, colors.text, Enum.Font.GothamBold)
+displayName.Size = UDim2.new(1, -104, 0, 24)
+displayName.Position = UDim2.new(0, 92, 0, 18)
+local username = label(profile, "Username", "@" .. player.Name .. "  |  UserId " .. tostring(player.UserId), 12, colors.muted, Enum.Font.GothamMedium)
+username.Size = UDim2.new(1, -104, 0, 18)
+username.Position = UDim2.new(0, 92, 0, 43)
+local currentPlace = label(profile, "CurrentPlace", gameName .. "  |  PlaceId " .. tostring(game.PlaceId), 12, gameSupported and colors.green or colors.red, Enum.Font.GothamSemibold)
+currentPlace.Size = UDim2.new(1, -104, 0, 18)
+currentPlace.Position = UDim2.new(0, 92, 0, 63)
 
-local username = label(profilePanel, "Username", "@" .. player.Name .. "  |  UserId " .. tostring(player.UserId), 12, colors.muted, Enum.Font.GothamMedium)
-username.Size = UDim2.new(1, -96, 0, 18)
-username.Position = UDim2.new(0, 88, 0, 40)
-
-local place = label(profilePanel, "Place", gameName .. "  |  PlaceId " .. tostring(game.PlaceId), 12, gameSupported and colors.green or colors.red, Enum.Font.GothamSemibold)
-place.Size = UDim2.new(1, -96, 0, 18)
-place.Position = UDim2.new(0, 88, 0, 60)
-
-local updatesTitle = label(homePage, "UpdatesTitle", "Updates", 15, colors.title, Enum.Font.GothamBold)
-updatesTitle.Size = UDim2.new(1, 0, 0, 24)
-updatesTitle.Position = UDim2.new(0, 0, 0, 188)
-
-local updatesHolder = Instance.new("Frame")
-updatesHolder.Name = "Updates"
-updatesHolder.Size = UDim2.new(1, 0, 1, -218)
-updatesHolder.Position = UDim2.new(0, 0, 0, 218)
-updatesHolder.BackgroundTransparency = 1
-updatesHolder.Parent = homePage
-
-local updatesLayout = Instance.new("UIListLayout")
-updatesLayout.Padding = UDim.new(0, 8)
-updatesLayout.SortOrder = Enum.SortOrder.LayoutOrder
-updatesLayout.Parent = updatesHolder
+local updatesTitle = label(homePage, "UpdatesTitle", "Updates", 15, colors.text, Enum.Font.GothamBold)
+updatesTitle.Size = UDim2.new(1, 0, 0, 26)
 
 for index, update in ipairs(Updates) do
-	makeUpdate(updatesHolder, update, index)
+	local item = makePanel(homePage, 62)
+	local marker = Instance.new("Frame")
+	marker.Size = UDim2.new(0, 5, 0, 36)
+	marker.Position = UDim2.new(0, 14, 0, 13)
+	marker.BackgroundColor3 = index == 1 and colors.blue or (index == 2 and colors.cyan or colors.green)
+	marker.BorderSizePixel = 0
+	marker.Parent = item
+	corner(marker, 5)
+
+	local updateTitle = label(item, "UpdateTitle", update.title, 13, colors.text, Enum.Font.GothamBold)
+	updateTitle.Size = UDim2.new(1, -44, 0, 20)
+	updateTitle.Position = UDim2.new(0, 30, 0, 11)
+	local updateBody = label(item, "UpdateBody", update.body, 11, colors.muted, Enum.Font.Gotham)
+	updateBody.Size = UDim2.new(1, -44, 0, 24)
+	updateBody.Position = UDim2.new(0, 30, 0, 31)
 end
 
 local hubPage = makePage("Brainrot Hub")
+addVerticalLayout(hubPage, 12)
 
-local supportPanel = makePanel(hubPage, UDim2.new(1, 0, 0, 126))
-supportPanel.Position = UDim2.new(0, 0, 0, 0)
-supportPanel.BackgroundColor3 = Color3.fromRGB(21, 26, 39)
-addPanelGradient(supportPanel, Color3.fromRGB(28, 35, 54), Color3.fromRGB(17, 21, 32))
-
+local supportPanel = makePanel(hubPage, 126)
 local supportTitle = label(supportPanel, "SupportTitle", gameSupported and "This game is supported" or "This game is not supported yet", 18, gameSupported and colors.green or colors.red, Enum.Font.GothamBold)
-supportTitle.Size = UDim2.new(1, -180, 0, 28)
-supportTitle.Position = UDim2.new(0, 18, 0, 16)
+supportTitle.Size = UDim2.new(1, -170, 0, 28)
+supportTitle.Position = UDim2.new(0, 16, 0, 15)
+local supportBody = label(supportPanel, "SupportBody", gameSupported and ("Loaded " .. gameName .. ". The Game tab is ready.") or "Pick a supported game below to teleport there, or add this PlaceId to your configs.", 12, colors.muted, Enum.Font.GothamMedium)
+supportBody.Size = UDim2.new(1, -32, 0, 34)
+supportBody.Position = UDim2.new(0, 16, 0, 47)
+local source = label(supportPanel, "Source", gameSupported and ("Source: " .. tostring(loadedPath or "Unknown")) or ("Expected file: " .. GAME_FOLDER .. "/" .. tostring(game.PlaceId) .. ".lua"), 11, colors.muted, Enum.Font.GothamMedium)
+source.Size = UDim2.new(1, -32, 0, 20)
+source.Position = UDim2.new(0, 16, 0, 86)
 
-local supportBodyText = gameSupported
-	and ("Loaded config for " .. gameName .. ". The Game tab is ready.")
-	or "Pick a supported game below to teleport there, or add this PlaceId to your configs."
-local supportBody = label(supportPanel, "SupportBody", supportBodyText, 12, colors.text, Enum.Font.GothamMedium)
-supportBody.Size = UDim2.new(1, -36, 0, 34)
-supportBody.Position = UDim2.new(0, 18, 0, 47)
+local statusPill = Instance.new("TextLabel")
+statusPill.Size = UDim2.new(0, 126, 0, 34)
+statusPill.Position = UDim2.new(1, -142, 0, 16)
+statusPill.BackgroundColor3 = gameSupported and Color3.fromRGB(24, 86, 63) or Color3.fromRGB(88, 39, 55)
+statusPill.BorderSizePixel = 0
+statusPill.Font = Enum.Font.GothamBold
+statusPill.Text = gameSupported and "READY" or "NO CONFIG"
+statusPill.TextColor3 = gameSupported and Color3.fromRGB(179, 255, 223) or Color3.fromRGB(255, 177, 194)
+statusPill.TextSize = 12
+statusPill.Parent = supportPanel
+corner(statusPill, 14)
 
-local sourceText = gameSupported and ("Source: " .. tostring(loadedPath or "Unknown")) or ("Expected file: " .. GAME_FOLDER .. "/" .. tostring(game.PlaceId) .. ".lua")
-local source = label(supportPanel, "Source", sourceText, 11, colors.muted, Enum.Font.GothamMedium)
-source.Size = UDim2.new(1, -36, 0, 18)
-source.Position = UDim2.new(0, 18, 0, 88)
+local stats = Instance.new("Frame")
+stats.Size = UDim2.new(1, 0, 0, 78)
+stats.BackgroundTransparency = 1
+stats.Parent = hubPage
+local statsLayout = Instance.new("UIListLayout")
+statsLayout.FillDirection = Enum.FillDirection.Horizontal
+statsLayout.Padding = UDim.new(0, 10)
+statsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+statsLayout.Parent = stats
+makeInfoCard(stats, "PlaceId", tostring(game.PlaceId), colors.text).Size = UDim2.new(0.333, -7, 0, 78)
+makeInfoCard(stats, "Supported Games", tostring(#supportedGames), colors.blue).Size = UDim2.new(0.333, -7, 0, 78)
+makeInfoCard(stats, "Status", gameSupported and "Ready" or "Unsupported", gameSupported and colors.green or colors.yellow).Size = UDim2.new(0.333, -7, 0, 78)
 
-local supportStatus = Instance.new("TextLabel")
-supportStatus.Name = "SupportStatus"
-supportStatus.Size = UDim2.new(0, 132, 0, 34)
-supportStatus.Position = UDim2.new(1, -150, 0, 18)
-supportStatus.BackgroundColor3 = gameSupported and Color3.fromRGB(23, 88, 64) or Color3.fromRGB(88, 40, 55)
-supportStatus.BorderSizePixel = 0
-supportStatus.Font = Enum.Font.GothamBold
-supportStatus.Text = gameSupported and "READY" or "NO CONFIG"
-supportStatus.TextColor3 = gameSupported and Color3.fromRGB(177, 255, 223) or Color3.fromRGB(255, 171, 190)
-supportStatus.TextSize = 12
-supportStatus.Parent = supportPanel
-corner(supportStatus, 12)
+local listTitle = label(hubPage, "ListTitle", gameSupported and "Other Supported Games" or "Supported Games", 15, colors.text, Enum.Font.GothamBold)
+listTitle.Size = UDim2.new(1, 0, 0, 26)
 
-local infoGrid = Instance.new("Frame")
-infoGrid.Size = UDim2.new(1, 0, 0, 86)
-infoGrid.Position = UDim2.new(0, 0, 0, 140)
-infoGrid.BackgroundTransparency = 1
-infoGrid.Parent = hubPage
-
-local leftInfo = makePanel(infoGrid, UDim2.new(0.333, -8, 1, 0), UDim2.new(0, 0, 0, 0))
-local middleInfo = makePanel(infoGrid, UDim2.new(0.334, -8, 1, 0), UDim2.new(0.333, 4, 0, 0))
-local rightInfo = makePanel(infoGrid, UDim2.new(0.333, -8, 1, 0), UDim2.new(0.667, 8, 0, 0))
-
-local placeTitle = label(leftInfo, "PlaceTitle", "PlaceId", 12, colors.muted, Enum.Font.GothamSemibold)
-placeTitle.Size = UDim2.new(1, -24, 0, 18)
-placeTitle.Position = UDim2.new(0, 12, 0, 12)
-local placeValue = label(leftInfo, "PlaceValue", tostring(game.PlaceId), 14, colors.title, Enum.Font.GothamBold)
-placeValue.Size = UDim2.new(1, -24, 0, 26)
-placeValue.Position = UDim2.new(0, 12, 0, 36)
-
-local supportedTitle = label(middleInfo, "SupportedTitle", "Supported Games", 12, colors.muted, Enum.Font.GothamSemibold)
-supportedTitle.Size = UDim2.new(1, -24, 0, 18)
-supportedTitle.Position = UDim2.new(0, 12, 0, 12)
-local supportedValue = label(middleInfo, "SupportedValue", tostring(#supportedGameList), 18, colors.blue, Enum.Font.GothamBold)
-supportedValue.Size = UDim2.new(1, -24, 0, 26)
-supportedValue.Position = UDim2.new(0, 12, 0, 36)
-
-local statusTitle = label(rightInfo, "StatusTitle", "Status", 12, colors.muted, Enum.Font.GothamSemibold)
-statusTitle.Size = UDim2.new(1, -24, 0, 18)
-statusTitle.Position = UDim2.new(0, 12, 0, 12)
-local statusValue = label(rightInfo, "StatusValue", gameSupported and "Ready" or "Unsupported", 16, gameSupported and colors.green or colors.yellow, Enum.Font.GothamBold)
-statusValue.Size = UDim2.new(1, -24, 0, 26)
-statusValue.Position = UDim2.new(0, 12, 0, 36)
-
-local supportedListTitle = label(hubPage, "SupportedListTitle", gameSupported and "Other Supported Games" or "Supported Games", 15, colors.title, Enum.Font.GothamBold)
-supportedListTitle.Size = UDim2.new(1, 0, 0, 24)
-supportedListTitle.Position = UDim2.new(0, 0, 0, 244)
-
-local supportedList = Instance.new("Frame")
-supportedList.Name = "SupportedGames"
-supportedList.Size = UDim2.new(1, 0, 0, math.max(84, #supportedGameList * 80))
-supportedList.Position = UDim2.new(0, 0, 0, 274)
-supportedList.BackgroundTransparency = 1
-supportedList.Parent = hubPage
-
-local supportedLayout = Instance.new("UIListLayout")
-supportedLayout.Padding = UDim.new(0, 8)
-supportedLayout.SortOrder = Enum.SortOrder.LayoutOrder
-supportedLayout.Parent = supportedList
-
-if #supportedGameList == 0 then
-	local emptyList = makePanel(supportedList, UDim2.new(1, 0, 0, 76))
-	emptyList.LayoutOrder = 1
-	local emptyTitle = label(emptyList, "EmptyTitle", "No supported games listed yet", 14, colors.title, Enum.Font.GothamBold)
+if #supportedGames == 0 then
+	local empty = makePanel(hubPage, 78)
+	local emptyTitle = label(empty, "EmptyTitle", "No supported games listed yet", 14, colors.text, Enum.Font.GothamBold)
 	emptyTitle.Size = UDim2.new(1, -28, 0, 22)
-	emptyTitle.Position = UDim2.new(0, 14, 0, 12)
-	local emptyBody = label(emptyList, "EmptyBody", "Add entries to SupportedGameList so unsupported users can teleport to them.", 12, colors.muted, Enum.Font.Gotham)
+	emptyTitle.Position = UDim2.new(0, 14, 0, 13)
+	local emptyBody = label(empty, "EmptyBody", "Add entries to SupportedGameList so unsupported users can teleport to them.", 12, colors.muted, Enum.Font.Gotham)
 	emptyBody.Size = UDim2.new(1, -28, 0, 28)
-	emptyBody.Position = UDim2.new(0, 14, 0, 36)
+	emptyBody.Position = UDim2.new(0, 14, 0, 37)
 else
-	for index, entry in ipairs(supportedGameList) do
-		makeSupportedGameButton(supportedList, entry, index)
+	for index, entry in ipairs(supportedGames) do
+		makeSupportedGameButton(hubPage, entry, index)
 	end
 end
 
 if gameSupported then
 	local gamePage = makePage("Game")
-	local gameHeader = label(gamePage, "GameHeader", gameName, 18, colors.title, Enum.Font.GothamBold)
-	gameHeader.Size = UDim2.new(1, 0, 0, 28)
-	gameHeader.Position = UDim2.new(0, 0, 0, 0)
-
-	local actionsHolder = Instance.new("Frame")
-	actionsHolder.Size = UDim2.new(1, 0, 1, -42)
-	actionsHolder.Position = UDim2.new(0, 0, 0, 42)
-	actionsHolder.BackgroundTransparency = 1
-	actionsHolder.Parent = gamePage
-
-	local actionLayout = Instance.new("UIListLayout")
-	actionLayout.Padding = UDim.new(0, 8)
-	actionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	actionLayout.Parent = actionsHolder
+	addVerticalLayout(gamePage, 12)
+	local headerPanel = makePanel(gamePage, 76)
+	local gameHeader = label(headerPanel, "GameHeader", gameName, 18, colors.text, Enum.Font.GothamBold)
+	gameHeader.Size = UDim2.new(1, -28, 0, 26)
+	gameHeader.Position = UDim2.new(0, 14, 0, 13)
+	local gameBody = label(headerPanel, "GameBody", "Game-specific actions for this place.", 12, colors.muted, Enum.Font.GothamMedium)
+	gameBody.Size = UDim2.new(1, -28, 0, 24)
+	gameBody.Position = UDim2.new(0, 14, 0, 39)
 
 	local actions = type(gameConfig.actions) == "table" and gameConfig.actions or {}
 	if #actions == 0 then
-		local empty = makePanel(actionsHolder, UDim2.new(1, 0, 0, 70))
-		label(empty, "EmptyTitle", "No actions yet", 14, colors.title, Enum.Font.GothamBold).Position = UDim2.new(0, 14, 0, 13)
-		local body = label(empty, "EmptyBody", "Add actions to this game config to show controls here.", 12, colors.muted, Enum.Font.Gotham)
-		body.Size = UDim2.new(1, -28, 0, 22)
-		body.Position = UDim2.new(0, 14, 0, 36)
+		local empty = makePanel(gamePage, 72)
+		local emptyTitle = label(empty, "EmptyTitle", "No actions yet", 14, colors.text, Enum.Font.GothamBold)
+		emptyTitle.Size = UDim2.new(1, -28, 0, 22)
+		emptyTitle.Position = UDim2.new(0, 14, 0, 13)
+		local emptyBody = label(empty, "EmptyBody", "Add actions to this game config to show controls here.", 12, colors.muted, Enum.Font.Gotham)
+		emptyBody.Size = UDim2.new(1, -28, 0, 24)
+		emptyBody.Position = UDim2.new(0, 14, 0, 37)
 	else
 		for _, action in ipairs(actions) do
 			local button = Instance.new("TextButton")
-			button.Size = UDim2.new(1, 0, 0, 62)
-			button.BackgroundColor3 = colors.panel
+			button.Size = UDim2.new(1, 0, 0, 68)
+			button.BackgroundColor3 = colors.surface2
 			button.BorderSizePixel = 0
 			button.AutoButtonColor = false
 			button.Text = ""
-			button.Parent = actionsHolder
-			corner(button, 12)
-			stroke(button, colors.lineSoft, 0.15, 1)
+			button.Parent = gamePage
+			corner(button, 16)
+			stroke(button, colors.line, 0.45, 1)
 
-			local actionTitle = label(button, "ActionTitle", action.title or "Game Action", 14, colors.title, Enum.Font.GothamBold)
+			local actionTitle = label(button, "ActionTitle", action.title or "Game Action", 14, colors.text, Enum.Font.GothamBold)
 			actionTitle.Size = UDim2.new(1, -28, 0, 22)
-			actionTitle.Position = UDim2.new(0, 14, 0, 9)
+			actionTitle.Position = UDim2.new(0, 14, 0, 11)
 			local actionBody = label(button, "ActionBody", action.description or "Run this game action.", 11, colors.muted, Enum.Font.Gotham)
-			actionBody.Size = UDim2.new(1, -28, 0, 22)
-			actionBody.Position = UDim2.new(0, 14, 0, 31)
+			actionBody.Size = UDim2.new(1, -28, 0, 24)
+			actionBody.Position = UDim2.new(0, 14, 0, 34)
 
-			button.MouseEnter:Connect(function()
-				tween(button, { BackgroundColor3 = colors.panelAlt })
-			end)
-			button.MouseLeave:Connect(function()
-				tween(button, { BackgroundColor3 = colors.panel })
-			end)
 			button.MouseButton1Click:Connect(function()
 				if type(action.callback) == "function" then
 					local ok, err = pcall(action.callback)
-					if not ok then
-						warn("Game action failed:", err)
-					end
+					if not ok then warn("Game action failed:", err) end
 				end
 			end)
 		end
@@ -717,35 +630,35 @@ selectTab("Home")
 
 local toast = Instance.new("Frame")
 toast.Name = "WelcomeToast"
-toast.Size = UDim2.new(0, 280, 0, 54)
-toast.Position = UDim2.new(1, -298, 1, 16)
-toast.BackgroundColor3 = Color3.fromRGB(20, 25, 37)
+toast.Size = UDim2.new(0, 280, 0, 56)
+toast.Position = UDim2.new(1, -312, 1, 16)
+toast.BackgroundColor3 = colors.surface2
 toast.BackgroundTransparency = 1
 toast.BorderSizePixel = 0
 toast.Parent = main
-	corner(toast, 12)
-stroke(toast, colors.lineSoft, 1, 1)
+corner(toast, 16)
+stroke(toast, colors.line, 1, 1)
 
-local toastTitle = label(toast, "ToastTitle", "Welcome to Brainrot Hub", 13, colors.title, Enum.Font.GothamBold)
+local toastTitle = label(toast, "ToastTitle", "Welcome to Brainrot Hub", 13, colors.text, Enum.Font.GothamBold)
 toastTitle.Size = UDim2.new(1, -24, 0, 20)
 toastTitle.Position = UDim2.new(0, 12, 0, 8)
 toastTitle.TextTransparency = 1
-
 local toastBody = label(toast, "ToastBody", "Thanks for using the script.", 11, colors.muted, Enum.Font.GothamMedium)
 toastBody.Size = UDim2.new(1, -24, 0, 18)
-toastBody.Position = UDim2.new(0, 12, 0, 28)
+toastBody.Position = UDim2.new(0, 12, 0, 30)
 toastBody.TextTransparency = 1
 
 local uiOpen = true
+local shownPosition = main.Position
+local hiddenPosition = UDim2.new(shownPosition.X.Scale, shownPosition.X.Offset, shownPosition.Y.Scale, shownPosition.Y.Offset + 22)
 
 local function showToast()
-	toast.Position = UDim2.new(1, -298, 1, 16)
-	tweenWithStyle(toast, { Position = UDim2.new(1, -298, 1, -72), BackgroundTransparency = 0 }, 0.35, Enum.EasingStyle.Back)
+	tween(toast, { Position = UDim2.new(1, -312, 1, -74), BackgroundTransparency = 0 }, 0.25)
 	tween(toastTitle, { TextTransparency = 0 }, 0.18)
 	tween(toastBody, { TextTransparency = 0 }, 0.18)
 	task.delay(3, function()
 		if toast and toast.Parent then
-			tweenWithStyle(toast, { Position = UDim2.new(1, -298, 1, 16), BackgroundTransparency = 1 }, 0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+			tween(toast, { Position = UDim2.new(1, -312, 1, 16), BackgroundTransparency = 1 }, 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 			tween(toastTitle, { TextTransparency = 1 }, 0.16)
 			tween(toastBody, { TextTransparency = 1 }, 0.16)
 		end
@@ -758,23 +671,21 @@ local function showUi()
 	main.Position = hiddenPosition
 	main.BackgroundTransparency = 1
 	scale.Scale = 0.985
-	tweenWithStyle(main, { Position = shownPosition, BackgroundTransparency = 0 }, 0.22, Enum.EasingStyle.Quart)
-	tweenWithStyle(scale, { Scale = 1 }, 0.22, Enum.EasingStyle.Quart)
+	tween(main, { Position = shownPosition, BackgroundTransparency = 0 }, 0.2)
+	tween(scale, { Scale = 1 }, 0.2)
 end
 
 local function hideUi()
 	uiOpen = false
-	tweenWithStyle(main, { Position = hiddenPosition, BackgroundTransparency = 1 }, 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	tweenWithStyle(scale, { Scale = 0.985 }, 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	task.delay(0.19, function()
-		if not uiOpen then
-			screenGui.Enabled = false
-		end
+	tween(main, { Position = hiddenPosition, BackgroundTransparency = 1 }, 0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	tween(scale, { Scale = 0.985 }, 0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	task.delay(0.17, function()
+		if not uiOpen then screenGui.Enabled = false end
 	end)
 end
 
 showUi()
-task.delay(0.45, showToast)
+task.delay(0.4, showToast)
 
 local dragging = false
 local dragStart
@@ -783,9 +694,11 @@ local mainStart
 local function updateDrag(input)
 	local delta = input.Position - dragStart
 	main.Position = UDim2.new(mainStart.X.Scale, mainStart.X.Offset + delta.X, mainStart.Y.Scale, mainStart.Y.Offset + delta.Y)
+	shownPosition = main.Position
+	hiddenPosition = UDim2.new(shownPosition.X.Scale, shownPosition.X.Offset, shownPosition.Y.Scale, shownPosition.Y.Offset + 22)
 end
 
-top.InputBegan:Connect(function(input)
+header.InputBegan:Connect(function(input)
 	if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
 		return
 	end
